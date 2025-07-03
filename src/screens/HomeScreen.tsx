@@ -3,15 +3,19 @@ import {
   View, 
   StyleSheet, 
   TextInput, 
-  SafeAreaView,
-  Alert,
-  RefreshControl
+  RefreshControl,
+  TouchableOpacity,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pokemon } from '../types/pokemon';
 import { usePokemon } from '../hooks/usePokemon';
 import { useTeam } from '../hooks/useTeam';
+import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../components/Toast';
 import { PokemonList } from '../components/PokemonList';
 
 interface HomeScreenProps {
@@ -21,6 +25,9 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  
+  const { colors, isDark, toggleTheme } = useTheme();
+  const { showToast, ToastComponent } = useToast();
   
   const { 
     pokemon, 
@@ -44,7 +51,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      // Recarregar dados quando a tela ganhar foco
       if (pokemon.length === 0) {
         reloadPokemon();
       }
@@ -74,76 +80,58 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       if (searchQuery.trim()) {
         await searchPokemon(searchQuery);
       }
+      showToast('Pokédex atualizada!', 'success');
+    } catch (error) {
+      showToast('Erro ao atualizar a Pokédex', 'error');
     } finally {
       setRefreshing(false);
     }
-  }, [reloadPokemon, searchPokemon, searchQuery]);
+  }, [reloadPokemon, searchPokemon, searchQuery, showToast]);
 
-  const showAddToTeamAlert = useCallback((pokemon: Pokemon) => {
+  const handleQuickAdd = useCallback(async (pokemon: Pokemon) => {
     if (isPokemonInTeam(pokemon.id)) {
-      Alert.alert(
-        'Pokémon já está na equipe',
-        `${pokemon.name} já faz parte da sua equipe!`
-      );
+      showToast(`${pokemon.name} já está na equipe!`, 'warning');
       return;
     }
 
     if (isTeamFull()) {
-      Alert.alert(
-        'Equipe cheia',
-        'Sua equipe já tem 6 Pokémon. Remova um Pokémon primeiro.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Ver Equipe', 
-            onPress: () => navigation.navigate('Team') 
-          }
-        ]
+      showToast(
+        'Equipe cheia! Remova um Pokémon primeiro.', 
+        'warning',
+        'Ver Equipe',
+        () => navigation.navigate('Team')
       );
       return;
     }
 
-    Alert.alert(
-      'Adicionar à equipe',
-      `Deseja adicionar ${pokemon.name} à sua equipe?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Adicionar', 
-          onPress: async () => {
-            try {
-              await addPokemonToTeam(pokemon);
-              Alert.alert(
-                'Sucesso!',
-                `${pokemon.name} foi adicionado à sua equipe!`,
-                [
-                  { text: 'OK' },
-                  { 
-                    text: 'Ver Equipe', 
-                    onPress: () => navigation.navigate('Team') 
-                  }
-                ]
-              );
-            } catch (error) {
-              Alert.alert(
-                'Erro',
-                error instanceof Error ? error.message : 'Erro ao adicionar Pokémon'
-              );
-            }
-          }
-        }
-      ]
-    );
-  }, [isPokemonInTeam, isTeamFull, addPokemonToTeam, navigation]);
+    try {
+      await addPokemonToTeam(pokemon);
+      showToast(
+        `${pokemon.name} adicionado à equipe!`, 
+        'success',
+        'Ver Equipe',
+        () => navigation.navigate('Team')
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Erro ao adicionar Pokémon',
+        'error'
+      );
+    }
+  }, [isPokemonInTeam, isTeamFull, addPokemonToTeam, navigation, showToast]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      
+      {/* Header fixo com espaçamento adequado */}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+          <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Buscar Pokémon..."
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -151,21 +139,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             clearButtonMode="while-editing"
           />
           {searchQuery.length > 0 && (
-            <Ionicons 
-              name="close-circle" 
-              size={20} 
-              color="#999" 
-              style={styles.clearIcon}
-              onPress={() => handleSearch('')}
-            />
+            <TouchableOpacity onPress={() => handleSearch('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           )}
         </View>
+        
+        <TouchableOpacity 
+          style={[styles.themeButton, { backgroundColor: colors.card }]}
+          onPress={toggleTheme}
+        >
+          <Ionicons 
+            name={isDark ? 'sunny' : 'moon'} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
       </View>
 
+      {/* Lista com padding bottom adequado para tab bar */}
       <PokemonList
         pokemon={displayedPokemon}
         loading={loading}
         onPokemonPress={handlePokemonPress}
+        onQuickAdd={handleQuickAdd}
         teamPokemonIds={teamPokemonIds}
         showEmpty={true}
         emptyMessage={
@@ -177,11 +174,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={['#007AFF']}
-            tintColor="#007AFF"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+            progressBackgroundColor={colors.surface}
           />
         }
       />
+      
+      <ToastComponent />
     </SafeAreaView>
   );
 };
@@ -189,14 +189,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingTop: Platform.OS === 'ios' ? 8 : 16, // Espaçamento extra no iOS
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e8ed',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: {
@@ -207,12 +207,21 @@ const styles = StyleSheet.create({
     shadowRadius: 1.41,
   },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f3f4',
     borderRadius: 25,
     paddingHorizontal: 16,
     height: 50,
+    marginRight: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
   },
   searchIcon: {
     marginRight: 10,
@@ -220,9 +229,20 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
   },
-  clearIcon: {
-    marginLeft: 10,
+  themeButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
   },
 });

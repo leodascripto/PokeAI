@@ -3,18 +3,21 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pokemon } from '../types/pokemon';
 import { useTeam } from '../hooks/useTeam';
+import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../components/Toast';
 import { TeamSlot } from '../components/TeamSlot';
 
 interface TeamScreenProps {
@@ -25,6 +28,9 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+
+  const { colors, isDark } = useTheme();
+  const { showToast, ToastComponent } = useToast();
 
   const {
     team,
@@ -40,7 +46,7 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
 
   const teamStats = getTeamStats();
 
-    useFocusEffect(
+  useFocusEffect(
     useCallback(() => {
       reloadTeam();
     }, [reloadTeam])
@@ -50,13 +56,11 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
     const pokemon = team[slotIndex];
     
     if (pokemon) {
-      // Se há um Pokémon no slot, navegar para detalhes
       navigation.navigate('PokemonDetail', { 
         pokemonId: pokemon.id,
         pokemon: pokemon 
       });
     } else {
-      // Se slot vazio, navegar para seleção de Pokémon
       navigation.navigate('Home');
     }
   }, [team, navigation]);
@@ -66,97 +70,65 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
     
     if (pokemon) {
       setSelectedSlot(slotIndex);
-      Alert.alert(
-        pokemon.name,
-        'O que deseja fazer?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Ver Detalhes', 
-            onPress: () => navigation.navigate('PokemonDetail', { 
-              pokemonId: pokemon.id,
-              pokemon: pokemon 
-            })
-          },
-          { 
-            text: 'Remover', 
-            style: 'destructive',
-            onPress: () => handleRemovePokemon(slotIndex)
-          }
-        ]
+      showToast(
+        `${pokemon.name} - O que deseja fazer?`,
+        'info',
+        'Remover',
+        () => handleRemovePokemon(slotIndex)
       );
     }
-  }, [team, navigation]);
+  }, [team, showToast]);
 
   const handleRemovePokemon = useCallback(async (slotIndex: number) => {
     const pokemon = team[slotIndex];
     if (!pokemon) return;
 
-    Alert.alert(
-      'Remover Pokémon',
-      `Tem certeza que deseja remover ${pokemon.name} da equipe?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Remover', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removePokemonFromTeam(slotIndex);
-              Alert.alert('Sucesso', `${pokemon.name} foi removido da equipe!`);
-            } catch (error) {
-              Alert.alert(
-                'Erro',
-                error instanceof Error ? error.message : 'Erro ao remover Pokémon'
-              );
-            }
-          }
-        }
-      ]
-    );
-  }, [team, removePokemonFromTeam]);
+    try {
+      await removePokemonFromTeam(slotIndex);
+      showToast(`${pokemon.name} removido da equipe!`, 'success');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Erro ao remover Pokémon',
+        'error'
+      );
+    }
+  }, [team, removePokemonFromTeam, showToast]);
 
   const handleClearTeam = useCallback(() => {
     if (teamStats.teamSize === 0) {
-      Alert.alert('Aviso', 'A equipe já está vazia!');
+      showToast('A equipe já está vazia!', 'warning');
       return;
     }
 
-    Alert.alert(
-      'Limpar Equipe',
-      'Tem certeza que deseja remover todos os Pokémon da equipe?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Limpar', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearTeam();
-              Alert.alert('Sucesso', 'Equipe foi limpa!');
-            } catch (error) {
-              Alert.alert(
-                'Erro',
-                error instanceof Error ? error.message : 'Erro ao limpar equipe'
-              );
-            }
-          }
+    showToast(
+      'Tem certeza que deseja limpar a equipe?',
+      'warning',
+      'Limpar',
+      async () => {
+        try {
+          await clearTeam();
+          showToast('Equipe limpa com sucesso!', 'success');
+        } catch (error) {
+          showToast(
+            error instanceof Error ? error.message : 'Erro ao limpar equipe',
+            'error'
+          );
         }
-      ]
+      }
     );
-  }, [teamStats.teamSize, clearTeam]);
+  }, [teamStats.teamSize, clearTeam, showToast]);
 
   const handleSaveTeam = useCallback(() => {
     if (teamStats.teamSize === 0) {
-      Alert.alert('Aviso', 'Não é possível salvar uma equipe vazia!');
+      showToast('Não é possível salvar uma equipe vazia!', 'warning');
       return;
     }
     setShowSaveModal(true);
-  }, [teamStats.teamSize]);
+  }, [teamStats.teamSize, showToast]);
 
   const confirmSaveTeam = useCallback(async () => {
     if (!teamName.trim()) {
-      Alert.alert('Erro', 'Digite um nome para a equipe!');
+      showToast('Digite um nome para a equipe!', 'error');
       return;
     }
 
@@ -164,33 +136,34 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
       await saveTeam(teamName.trim());
       setShowSaveModal(false);
       setTeamName('');
-      Alert.alert('Sucesso', 'Equipe salva com sucesso!');
+      showToast('Equipe salva com sucesso!', 'success');
     } catch (error) {
-      Alert.alert(
-        'Erro',
-        error instanceof Error ? error.message : 'Erro ao salvar equipe'
+      showToast(
+        error instanceof Error ? error.message : 'Erro ao salvar equipe',
+        'error'
       );
     }
-  }, [teamName, saveTeam]);
+  }, [teamName, saveTeam, showToast]);
 
   const handleGetRecommendations = useCallback(() => {
     const activePokemon = team.filter(p => p !== null) as Pokemon[];
     
     if (activePokemon.length === 0) {
-      Alert.alert(
-        'Aviso', 
-        'Adicione pelo menos um Pokémon à equipe para receber recomendações!'
+      showToast(
+        'Adicione pelo menos um Pokémon à equipe!',
+        'warning',
+        'Adicionar',
+        () => navigation.navigate('Home')
       );
       return;
     }
 
-    // Usar o primeiro Pokémon como base para recomendações
     const targetPokemon = activePokemon[0];
     navigation.navigate('Recommendations', { 
       targetPokemon,
       currentTeam: team 
     });
-  }, [team, navigation]);
+  }, [team, navigation, showToast]);
 
   const renderTeamSlots = () => {
     const rows = [];
@@ -222,38 +195,38 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
     if (teamStats.teamSize === 0) return null;
 
     return (
-      <View style={styles.statsContainer}>
-        <Text style={styles.statsTitle}>Estatísticas da Equipe</Text>
+      <View style={[styles.statsContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.statsTitle, { color: colors.text }]}>Estatísticas da Equipe</Text>
         
         <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Pokémon</Text>
-            <Text style={styles.statValue}>{teamStats.teamSize}/6</Text>
+          <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pokémon</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{teamStats.teamSize}/6</Text>
           </View>
           
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>HP Médio</Text>
-            <Text style={styles.statValue}>{teamStats.averageStats.hp}</Text>
+          <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>HP Médio</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{teamStats.averageStats.hp}</Text>
           </View>
           
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Ataque Médio</Text>
-            <Text style={styles.statValue}>{teamStats.averageStats.attack}</Text>
+          <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Ataque Médio</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{teamStats.averageStats.attack}</Text>
           </View>
           
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Defesa Média</Text>
-            <Text style={styles.statValue}>{teamStats.averageStats.defense}</Text>
+          <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Defesa Média</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{teamStats.averageStats.defense}</Text>
           </View>
         </View>
 
         {Object.keys(teamStats.typeDistribution).length > 0 && (
           <View style={styles.typesContainer}>
-            <Text style={styles.typesTitle}>Distribuição de Tipos:</Text>
+            <Text style={[styles.typesTitle, { color: colors.text }]}>Distribuição de Tipos:</Text>
             <View style={styles.typesList}>
               {Object.entries(teamStats.typeDistribution).map(([type, count]) => (
-                <View key={type} style={styles.typeItem}>
-                  <Text style={styles.typeItemText}>
+                <View key={type} style={[styles.typeItem, { backgroundColor: colors.primary + '20' }]}>
+                  <Text style={[styles.typeItemText, { color: colors.primary }]}>
                     {type.charAt(0).toUpperCase() + type.slice(1)}: {count}
                   </Text>
                 </View>
@@ -266,10 +239,12 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.header}
+        colors={isDark ? ['#1a1a1a', '#2a2a2a'] : ['#667eea', '#764ba2']}
+        style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 10 : 20 }]}
       >
         <Text style={styles.headerTitle}>Minha Equipe</Text>
         <Text style={styles.headerSubtitle}>
@@ -277,7 +252,11 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
         </Text>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.teamContainer}>
           {renderTeamSlots()}
         </View>
@@ -286,7 +265,7 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
 
         <View style={styles.actionsContainer}>
           <TouchableOpacity 
-            style={[styles.actionButton, styles.primaryButton]}
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
             onPress={handleGetRecommendations}
             disabled={teamStats.teamSize === 0}
           >
@@ -295,23 +274,23 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.actionButton, styles.secondaryButton]}
+            style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 }]}
             onPress={handleSaveTeam}
             disabled={teamStats.teamSize === 0}
           >
-            <Ionicons name="save" size={20} color="#007AFF" />
-            <Text style={[styles.actionButtonText, { color: '#007AFF' }]}>
+            <Ionicons name="save" size={20} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.primary }]}>
               Salvar Equipe
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.actionButton, styles.dangerButton]}
+            style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.error, borderWidth: 1 }]}
             onPress={handleClearTeam}
             disabled={teamStats.teamSize === 0}
           >
-            <Ionicons name="trash" size={20} color="#FF3B30" />
-            <Text style={[styles.actionButtonText, { color: '#FF3B30' }]}>
+            <Ionicons name="trash" size={20} color={colors.error} />
+            <Text style={[styles.actionButtonText, { color: colors.error }]}>
               Limpar Equipe
             </Text>
           </TouchableOpacity>
@@ -325,12 +304,13 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
         onRequestClose={() => setShowSaveModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Salvar Equipe</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Salvar Equipe</Text>
             
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
               placeholder="Nome da equipe..."
+              placeholderTextColor={colors.textSecondary}
               value={teamName}
               onChangeText={setTeamName}
               autoFocus
@@ -338,17 +318,17 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
             
             <View style={styles.modalActions}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.modalCancelButton]}
+                style={[styles.modalButton, { backgroundColor: colors.card }]}
                 onPress={() => {
                   setShowSaveModal(false);
                   setTeamName('');
                 }}
               >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancelar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.modalButton, styles.modalSaveButton]}
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
                 onPress={confirmSaveTeam}
               >
                 <Text style={styles.modalSaveText}>Salvar</Text>
@@ -357,6 +337,8 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      
+      <ToastComponent />
     </SafeAreaView>
   );
 };
@@ -364,7 +346,6 @@ export const TeamScreen: React.FC<TeamScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
     paddingHorizontal: 20,
@@ -384,6 +365,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100, // Espaço para tab bar
+  },
   teamContainer: {
     padding: 20,
   },
@@ -393,11 +377,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statsContainer: {
-    backgroundColor: '#fff',
     margin: 20,
     marginTop: 0,
     borderRadius: 16,
     padding: 20,
+    borderWidth: 1,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: {
@@ -410,7 +394,6 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -422,7 +405,6 @@ const styles = StyleSheet.create({
   },
   statItem: {
     width: '48%',
-    backgroundColor: '#f8f9fa',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -430,13 +412,11 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 4,
   },
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
   },
   typesContainer: {
     marginTop: 8,
@@ -444,7 +424,6 @@ const styles = StyleSheet.create({
   typesTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8,
   },
   typesList: {
@@ -453,14 +432,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeItem: {
-    backgroundColor: '#e3f2fd',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   typeItemText: {
     fontSize: 12,
-    color: '#1976d2',
     fontWeight: '500',
   },
   actionsContainer: {
@@ -475,19 +452,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  primaryButton: {
-    backgroundColor: '#007AFF',
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  dangerButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#FF3B30',
-  },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -500,7 +464,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     width: '80%',
@@ -509,13 +472,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     textAlign: 'center',
     marginBottom: 20,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -532,14 +493,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  modalCancelButton: {
-    backgroundColor: '#f8f9fa',
-  },
-  modalSaveButton: {
-    backgroundColor: '#007AFF',
-  },
   modalCancelText: {
-    color: '#666',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -1,30 +1,40 @@
 import React from 'react';
-import { FlatList, View, StyleSheet, Text } from 'react-native';
+import { FlatList, View, StyleSheet, Text, RefreshControl, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pokemon } from '../types/pokemon';
 import { PokemonCard } from './PokemonCard';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useTheme } from '../context/ThemeContext';
 
 interface PokemonListProps {
   pokemon: Pokemon[];
   loading: boolean;
   onPokemonPress: (pokemon: Pokemon) => void;
+  onQuickAdd?: (pokemon: Pokemon) => void;
   teamPokemonIds?: number[];
   showEmpty?: boolean;
   emptyMessage?: string;
+  refreshControl?: React.ReactElement<any>;
 }
 
 export const PokemonList: React.FC<PokemonListProps> = ({
   pokemon,
   loading,
   onPokemonPress,
+  onQuickAdd,
   teamPokemonIds = [],
   showEmpty = true,
-  emptyMessage = 'Nenhum Pokémon encontrado'
+  emptyMessage = 'Nenhum Pokémon encontrado',
+  refreshControl
 }) => {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
   const renderPokemonCard = ({ item }: { item: Pokemon }) => (
     <PokemonCard
       pokemon={item}
       onPress={() => onPokemonPress(item)}
+      onQuickAdd={onQuickAdd}
       isInTeam={teamPokemonIds.includes(item.id)}
     />
   );
@@ -36,7 +46,7 @@ export const PokemonList: React.FC<PokemonListProps> = ({
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>{emptyMessage}</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{emptyMessage}</Text>
       </View>
     );
   };
@@ -46,7 +56,7 @@ export const PokemonList: React.FC<PokemonListProps> = ({
 
     return (
       <View style={styles.header}>
-        <Text style={styles.headerText}>
+        <Text style={[styles.headerText, { color: colors.textSecondary }]}>
           {pokemon.length} Pokémon{pokemon.length !== 1 ? 's' : ''} encontrado{pokemon.length !== 1 ? 's' : ''}
         </Text>
       </View>
@@ -55,7 +65,11 @@ export const PokemonList: React.FC<PokemonListProps> = ({
 
   const renderFooter = () => {
     if (loading) return <LoadingSpinner style={styles.footerLoader} />;
-    return null;
+    
+    // Espaço para tab bar considerando SafeArea
+    const bottomSpace = insets.bottom + 90; // 70 (tab bar) + 20 (padding extra)
+    
+    return <View style={[styles.footerSpacer, { height: bottomSpace }]} />;
   };
 
   return (
@@ -65,14 +79,15 @@ export const PokemonList: React.FC<PokemonListProps> = ({
       keyExtractor={(item) => item.id.toString()}
       numColumns={2}
       columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
       ListHeaderComponent={renderHeader}
       ListEmptyComponent={renderEmpty}
       ListFooterComponent={renderFooter}
       showsVerticalScrollIndicator={false}
+      refreshControl={refreshControl}
       getItemLayout={(data, index) => ({
-        length: 180, // altura aproximada do card + margin
-        offset: 180 * Math.floor(index / 2),
+        length: 240, // altura atualizada do card + margin
+        offset: 240 * Math.floor(index / 2),
         index,
       })}
       removeClippedSubviews={true}
@@ -87,7 +102,7 @@ export const PokemonList: React.FC<PokemonListProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    paddingBottom: 100, // espaço extra para navegação
+    flexGrow: 1,
   },
   row: {
     justifyContent: 'space-between',
@@ -99,7 +114,6 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 16,
-    color: '#666',
     fontWeight: '500',
   },
   emptyContainer: {
@@ -110,10 +124,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
     textAlign: 'center',
   },
   footerLoader: {
     marginVertical: 20,
+  },
+  footerSpacer: {
+    width: '100%',
   },
 });

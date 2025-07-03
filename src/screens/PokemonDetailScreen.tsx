@@ -7,16 +7,19 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
   Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { Pokemon } from '../types/pokemon';
 import { useTeam } from '../hooks/useTeam';
 import { usePokemonDetail } from '../hooks/usePokemon';
+import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../components/Toast';
 import { getTypeColor, getTypeGradient } from '../utils/typeColors';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PokemonDetailedInfo } from '../components/PokemonDetailedInfo';
 
 interface PokemonDetailScreenProps {
   navigation: any;
@@ -35,7 +38,10 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   route 
 }) => {
   const { pokemonId, pokemon: initialPokemon } = route.params;
-  const [activeTab, setActiveTab] = useState<'stats' | 'info'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'info' | 'detailed'>('stats');
+  
+  const { colors, isDark } = useTheme();
+  const { showToast, ToastComponent } = useToast();
   
   const { pokemon: detailedPokemon, loading } = usePokemonDetail(
     initialPokemon ? null : pokemonId
@@ -55,69 +61,46 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
     if (!pokemon) return;
 
     if (isPokemonInTeam(pokemon.id)) {
-      Alert.alert(
-        'Remover da equipe',
-        `Deseja remover ${pokemon.name} da sua equipe?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Remover', 
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const slotIndex = team.findIndex(p => p?.id === pokemon.id);
-                if (slotIndex !== -1) {
-                  await removePokemonFromTeam(slotIndex);
-                  Alert.alert('Sucesso', `${pokemon.name} foi removido da equipe!`);
-                }
-              } catch (error) {
-                Alert.alert(
-                  'Erro',
-                  error instanceof Error ? error.message : 'Erro ao remover Pokémon'
-                );
-              }
-            }
-          }
-        ]
-      );
+      const slotIndex = team.findIndex(p => p?.id === pokemon.id);
+      if (slotIndex !== -1) {
+        try {
+          await removePokemonFromTeam(slotIndex);
+          showToast(`${pokemon.name} removido da equipe!`, 'success');
+        } catch (error) {
+          showToast(
+            error instanceof Error ? error.message : 'Erro ao remover Pokémon',
+            'error'
+          );
+        }
+      }
       return;
     }
 
     if (isTeamFull()) {
-      Alert.alert(
-        'Equipe cheia',
-        'Sua equipe já tem 6 Pokémon. Remova um Pokémon primeiro.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Ver Equipe', 
-            onPress: () => navigation.navigate('Team') 
-          }
-        ]
+      showToast(
+        'Equipe cheia! Remova um Pokémon primeiro.', 
+        'warning',
+        'Ver Equipe',
+        () => navigation.navigate('Team')
       );
       return;
     }
 
     try {
       await addPokemonToTeam(pokemon);
-      Alert.alert(
-        'Sucesso!',
-        `${pokemon.name} foi adicionado à sua equipe!`,
-        [
-          { text: 'OK' },
-          { 
-            text: 'Ver Equipe', 
-            onPress: () => navigation.navigate('Team') 
-          }
-        ]
+      showToast(
+        `${pokemon.name} adicionado à equipe!`, 
+        'success',
+        'Ver Equipe',
+        () => navigation.navigate('Team')
       );
     } catch (error) {
-      Alert.alert(
-        'Erro',
-        error instanceof Error ? error.message : 'Erro ao adicionar Pokémon'
+      showToast(
+        error instanceof Error ? error.message : 'Erro ao adicionar Pokémon',
+        'error'
       );
     }
-  }, [pokemon, isPokemonInTeam, isTeamFull, addPokemonToTeam, removePokemonFromTeam, team, navigation]);
+  }, [pokemon, isPokemonInTeam, isTeamFull, addPokemonToTeam, removePokemonFromTeam, team, navigation, showToast]);
 
   const handleGetRecommendations = useCallback(() => {
     if (!pokemon) return;
@@ -130,7 +113,8 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <LoadingSpinner text="Carregando detalhes..." />
       </SafeAreaView>
     );
@@ -138,9 +122,11 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
 
   if (!pokemon) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Pokémon não encontrado</Text>
+          <Ionicons name="warning" size={64} color={colors.textSecondary} />
+          <Text style={[styles.errorText, { color: colors.text }]}>Pokémon não encontrado</Text>
         </View>
       </SafeAreaView>
     );
@@ -155,20 +141,20 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   };
 
   const getStatColor = (baseStat: number) => {
-    if (baseStat >= 100) return '#4CAF50';
-    if (baseStat >= 70) return '#FF9800';
-    return '#F44336';
+    if (baseStat >= 100) return colors.success;
+    if (baseStat >= 70) return colors.warning;
+    return colors.error;
   };
 
   const renderStats = () => (
-    <View style={styles.tabContent}>
+    <View style={[styles.tabContent, { backgroundColor: colors.background }]}>
       {pokemon.stats.map((stat, index) => (
         <View key={index} style={styles.statRow}>
-          <Text style={styles.statName}>
+          <Text style={[styles.statName, { color: colors.textSecondary }]}>
             {stat.stat.name.replace('-', ' ').toUpperCase()}
           </Text>
-          <Text style={styles.statValue}>{stat.base_stat}</Text>
-          <View style={styles.statBarContainer}>
+          <Text style={[styles.statValue, { color: colors.text }]}>{stat.base_stat}</Text>
+          <View style={[styles.statBarContainer, { backgroundColor: colors.border }]}>
             <View 
               style={[
                 styles.statBar,
@@ -182,8 +168,8 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
         </View>
       ))}
       
-      <View style={styles.totalStatsContainer}>
-        <Text style={styles.totalStatsText}>
+      <View style={[styles.totalStatsContainer, { backgroundColor: colors.card }]}>
+        <Text style={[styles.totalStatsText, { color: colors.text }]}>
           Total: {pokemon.stats.reduce((sum, stat) => sum + stat.base_stat, 0)}
         </Text>
       </View>
@@ -191,22 +177,22 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   );
 
   const renderInfo = () => (
-    <View style={styles.tabContent}>
+    <View style={[styles.tabContent, { backgroundColor: colors.background }]}>
       <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>Altura:</Text>
-        <Text style={styles.infoValue}>{(pokemon.height / 10).toFixed(1)} m</Text>
+        <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Altura:</Text>
+        <Text style={[styles.infoValue, { color: colors.text }]}>{(pokemon.height / 10).toFixed(1)} m</Text>
       </View>
       
       <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>Peso:</Text>
-        <Text style={styles.infoValue}>{(pokemon.weight / 10).toFixed(1)} kg</Text>
+        <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Peso:</Text>
+        <Text style={[styles.infoValue, { color: colors.text }]}>{(pokemon.weight / 10).toFixed(1)} kg</Text>
       </View>
       
       <View style={styles.infoSection}>
-        <Text style={styles.infoSectionTitle}>Habilidades:</Text>
+        <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Habilidades:</Text>
         {pokemon.abilities.map((ability, index) => (
-          <View key={index} style={styles.abilityItem}>
-            <Text style={styles.abilityName}>
+          <View key={index} style={[styles.abilityItem, { backgroundColor: colors.card }]}>
+            <Text style={[styles.abilityName, { color: colors.text }]}>
               {ability.ability.name.replace('-', ' ')}
               {ability.is_hidden && ' (Oculta)'}
             </Text>
@@ -215,7 +201,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
       </View>
       
       <View style={styles.infoSection}>
-        <Text style={styles.infoSectionTitle}>Tipos:</Text>
+        <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Tipos:</Text>
         <View style={styles.typesContainer}>
           {pokemon.types.map((type, index) => (
             <View
@@ -236,7 +222,9 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style="light" />
+      
       <LinearGradient
         colors={gradient}
         style={styles.header}
@@ -282,34 +270,63 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
         </View>
       </LinearGradient>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: colors.background }]}>
         <View style={styles.tabs}>
           <TouchableOpacity 
-            style={[styles.tab, activeTab === 'stats' && styles.activeTab]}
+            style={[
+              styles.tab, 
+              activeTab === 'stats' && [styles.activeTab, { borderBottomColor: colors.primary }]
+            ]}
             onPress={() => setActiveTab('stats')}
           >
-            <Text style={[styles.tabText, activeTab === 'stats' && styles.activeTabText]}>
+            <Text style={[
+              styles.tabText, 
+              { color: activeTab === 'stats' ? colors.primary : colors.textSecondary }
+            ]}>
               Estatísticas
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.tab, activeTab === 'info' && styles.activeTab]}
+            style={[
+              styles.tab, 
+              activeTab === 'info' && [styles.activeTab, { borderBottomColor: colors.primary }]
+            ]}
             onPress={() => setActiveTab('info')}
           >
-            <Text style={[styles.tabText, activeTab === 'info' && styles.activeTabText]}>
+            <Text style={[
+              styles.tabText, 
+              { color: activeTab === 'info' ? colors.primary : colors.textSecondary }
+            ]}>
               Informações
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.tab, 
+              activeTab === 'detailed' && [styles.activeTab, { borderBottomColor: colors.primary }]
+            ]}
+            onPress={() => setActiveTab('detailed')}
+          >
+            <Text style={[
+              styles.tabText, 
+              { color: activeTab === 'detailed' ? colors.primary : colors.textSecondary }
+            ]}>
+              Detalhes
             </Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.tabContainer} showsVerticalScrollIndicator={false}>
-          {activeTab === 'stats' ? renderStats() : renderInfo()}
+          {activeTab === 'stats' && renderStats()}
+          {activeTab === 'info' && renderInfo()}
+          {activeTab === 'detailed' && <PokemonDetailedInfo pokemon={pokemon} />}
         </ScrollView>
 
-        <View style={styles.actions}>
+        <View style={[styles.actions, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <TouchableOpacity 
-            style={[styles.actionButton, styles.primaryButton]}
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
             onPress={handleAddToTeam}
           >
             <Ionicons 
@@ -323,16 +340,18 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.actionButton, styles.secondaryButton]}
+            style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 }]}
             onPress={handleGetRecommendations}
           >
-            <Ionicons name="bulb" size={20} color="#007AFF" />
-            <Text style={[styles.actionButtonText, { color: '#007AFF' }]}>
+            <Ionicons name="bulb" size={20} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.primary }]}>
               Ver Recomendações
             </Text>
           </TouchableOpacity>
         </View>
       </View>
+      
+      <ToastComponent />
     </SafeAreaView>
   );
 };
@@ -340,7 +359,6 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
     paddingTop: 20,
@@ -386,7 +404,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#fff',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
@@ -405,15 +422,10 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#007AFF',
+    borderBottomWidth: 2,
   },
   tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#999',
-  },
-  activeTabText: {
-    color: '#007AFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   tabContainer: {
@@ -432,20 +444,17 @@ const styles = StyleSheet.create({
     width: 100,
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
   },
   statValue: {
     width: 40,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
     textAlign: 'right',
     marginRight: 12,
   },
   statBarContainer: {
     flex: 1,
     height: 8,
-    backgroundColor: '#f0f0f0',
     borderRadius: 4,
   },
   statBar: {
@@ -455,30 +464,26 @@ const styles = StyleSheet.create({
   totalStatsContainer: {
     marginTop: 20,
     padding: 16,
-    backgroundColor: '#f8f9fa',
     borderRadius: 12,
     alignItems: 'center',
   },
   totalStatsText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   infoLabel: {
     fontSize: 16,
-    color: '#666',
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 16,
-    color: '#333',
     fontWeight: '600',
   },
   infoSection: {
@@ -487,18 +492,15 @@ const styles = StyleSheet.create({
   infoSectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 12,
   },
   abilityItem: {
-    backgroundColor: '#f8f9fa',
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,
   },
   abilityName: {
     fontSize: 14,
-    color: '#333',
     fontWeight: '500',
     textTransform: 'capitalize',
   },
@@ -521,11 +523,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
     gap: 12,
   },
   actionButton: {
@@ -535,14 +535,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#007AFF',
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#007AFF',
   },
   actionButtonText: {
     fontSize: 16,
@@ -556,6 +548,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#666',
+    marginTop: 16,
   },
 });
