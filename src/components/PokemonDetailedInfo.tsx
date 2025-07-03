@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Pokemon } from '../types/pokemon';
 import { useTheme } from '../context/ThemeContext';
@@ -249,19 +249,19 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {renderStatAnalysis()}
       {renderPhysicalInfo()}
       {renderGameInfo()}
       {renderAbilitiesDetailed()}
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 10,
   },
   section: {
     borderRadius: 16,

@@ -20,6 +20,7 @@ import { useToast } from '../components/Toast';
 import { getTypeColor, getTypeGradient } from '../utils/typeColors';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PokemonDetailedInfo } from '../components/PokemonDetailedInfo';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PokemonDetailScreenProps {
   navigation: any;
@@ -39,6 +40,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
 }) => {
   const { pokemonId, pokemon: initialPokemon } = route.params;
   const [activeTab, setActiveTab] = useState<'stats' | 'info' | 'detailed'>('stats');
+  const insets = useSafeAreaInsets();
   
   const { colors, isDark } = useTheme();
   const { showToast, ToastComponent } = useToast();
@@ -147,7 +149,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   };
 
   const renderStats = () => (
-    <View style={[styles.tabContent, { backgroundColor: colors.background }]}>
+    <View style={styles.tabContent}>
       {pokemon.stats.map((stat, index) => (
         <View key={index} style={styles.statRow}>
           <Text style={[styles.statName, { color: colors.textSecondary }]}>
@@ -177,7 +179,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   );
 
   const renderInfo = () => (
-    <View style={[styles.tabContent, { backgroundColor: colors.background }]}>
+    <View style={styles.tabContent}>
       <View style={styles.infoRow}>
         <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Altura:</Text>
         <Text style={[styles.infoValue, { color: colors.text }]}>{(pokemon.height / 10).toFixed(1)} m</Text>
@@ -221,13 +223,16 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
     </View>
   );
 
+  const actionButtonHeight = 80; // altura fixa para os botões de ação
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style="light" />
       
+      {/* Header fixo */}
       <LinearGradient
         colors={gradient}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top }]}
       >
         <View style={styles.headerTop}>
           <TouchableOpacity 
@@ -270,7 +275,9 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
         </View>
       </LinearGradient>
 
+      {/* Content scrollável */}
       <View style={[styles.content, { backgroundColor: colors.background }]}>
+        {/* Tabs */}
         <View style={styles.tabs}>
           <TouchableOpacity 
             style={[
@@ -318,41 +325,57 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.tabContainer} showsVerticalScrollIndicator={false}>
+        {/* ScrollView com conteúdo das tabs */}
+        <ScrollView 
+          style={styles.scrollContainer} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: actionButtonHeight + insets.bottom + 20 }
+          ]}
+        >
           {activeTab === 'stats' && renderStats()}
           {activeTab === 'info' && renderInfo()}
           {activeTab === 'detailed' && <PokemonDetailedInfo pokemon={pokemon} />}
         </ScrollView>
+      </View>
 
-        <View style={[styles.actions, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: colors.primary }]}
-            onPress={handleAddToTeam}
-          >
-            <Ionicons 
-              name={inTeam ? "remove-circle" : "add-circle"} 
-              size={20} 
-              color="#fff" 
-            />
-            <Text style={styles.actionButtonText}>
-              {inTeam ? 'Remover da Equipe' : 'Adicionar à Equipe'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 }]}
-            onPress={handleGetRecommendations}
-          >
-            <Ionicons name="bulb" size={20} color={colors.primary} />
-            <Text style={[styles.actionButtonText, { color: colors.primary }]}>
-              Ver Recomendações
-            </Text>
-          </TouchableOpacity>
-        </View>
+      {/* Botões de ação fixos na parte inferior */}
+      <View style={[
+        styles.actions, 
+        { 
+          backgroundColor: colors.surface, 
+          borderTopColor: colors.border,
+          paddingBottom: insets.bottom 
+        }
+      ]}>
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: colors.primary }]}
+          onPress={handleAddToTeam}
+        >
+          <Ionicons 
+            name={inTeam ? "remove-circle" : "add-circle"} 
+            size={20} 
+            color="#fff" 
+          />
+          <Text style={styles.actionButtonText}>
+            {inTeam ? 'Remover da Equipe' : 'Adicionar à Equipe'}
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 }]}
+          onPress={handleGetRecommendations}
+        >
+          <Ionicons name="bulb" size={20} color={colors.primary} />
+          <Text style={[styles.actionButtonText, { color: colors.primary }]}>
+            Ver Recomendações
+          </Text>
+        </TouchableOpacity>
       </View>
       
       <ToastComponent />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -361,7 +384,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 20,
     paddingBottom: 30,
   },
   headerTop: {
@@ -369,6 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    paddingTop: 20,
     marginBottom: 20,
   },
   backButton: {
@@ -407,12 +430,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
-    paddingTop: 20,
   },
   tabs: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   tab: {
     flex: 1,
@@ -428,12 +451,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  tabContainer: {
+  scrollContainer: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   tabContent: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingTop: 10,
   },
   statRow: {
     flexDirection: 'row',
@@ -519,12 +545,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   actions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     gap: 12,
   },
