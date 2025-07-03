@@ -1,8 +1,11 @@
+// src/hooks/useTeam.ts (atualizado)
 import { useState, useEffect, useCallback } from 'react';
 import { Pokemon } from '../types/pokemon';
 import { Team, PokemonRecommendation } from '../types/team';
+import { TeamStrategy } from '../types/teamStrategy';
 import { teamManager } from '../services/teamManager';
 import { mlRecommendationService } from '../services/mlRecommendation';
+import { enhancedMLRecommendationService } from '../services/enhancedMLRecommendation';
 import { pokemonApi } from '../services/pokemonApi';
 
 export const useTeam = () => {
@@ -160,6 +163,7 @@ export const useTeam = () => {
   };
 };
 
+// Hook para recomendações básicas (mantido para compatibilidade)
 export const useRecommendations = () => {
   const [recommendations, setRecommendations] = useState<PokemonRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -198,6 +202,60 @@ export const useRecommendations = () => {
     loading,
     error,
     getRecommendations,
+    clearRecommendations
+  };
+};
+
+// Novo hook para recomendações estratégicas
+export const useStrategyRecommendations = () => {
+  const [recommendations, setRecommendations] = useState<PokemonRecommendation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [strategyTips, setStrategyTips] = useState<string[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+
+  const getStrategyRecommendations = useCallback(async (
+    strategy: TeamStrategy,
+    currentTeam: (Pokemon | null)[]
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const allPokemon = await pokemonApi.getFirst151Pokemon();
+      const results = await enhancedMLRecommendationService.getStrategyRecommendations(
+        strategy,
+        currentTeam,
+        allPokemon
+      );
+      
+      setRecommendations(results.recommendations);
+      setStrategyTips(results.strategyTips);
+      setWarnings(results.warnings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao gerar recomendações estratégicas');
+      setRecommendations([]);
+      setStrategyTips([]);
+      setWarnings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clearRecommendations = useCallback(() => {
+    setRecommendations([]);
+    setStrategyTips([]);
+    setWarnings([]);
+    setError(null);
+  }, []);
+
+  return {
+    recommendations,
+    strategyTips,
+    warnings,
+    loading,
+    error,
+    getStrategyRecommendations,
     clearRecommendations
   };
 };
