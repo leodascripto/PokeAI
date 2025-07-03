@@ -3,20 +3,22 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
-  Alert,
   Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { Pokemon } from '../types/pokemon';
 import { PokemonRecommendation } from '../types/team';
 import { useRecommendations } from '../hooks/useTeam';
 import { useTeam } from '../hooks/useTeam';
+import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../components/Toast';
 import { RecommendationCard } from '../components/RecommendationCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SafeAreaWrapper } from '../components/SafeAreaWrapper';
 import { getTypeGradient } from '../utils/typeColors';
 
 interface RecommendationsScreenProps {
@@ -35,6 +37,9 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
 }) => {
   const { targetPokemon, currentTeam } = route.params;
   const [refreshing, setRefreshing] = useState(false);
+  
+  const { colors, isDark } = useTheme();
+  const { showToast, ToastComponent } = useToast();
   
   const {
     recommendations,
@@ -66,10 +71,13 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
     setRefreshing(true);
     try {
       await loadRecommendations();
+      showToast('Recomendações atualizadas!', 'success');
+    } catch (error) {
+      showToast('Erro ao atualizar recomendações', 'error');
     } finally {
       setRefreshing(false);
     }
-  }, [loadRecommendations]);
+  }, [loadRecommendations, showToast]);
 
   const handleRecommendationPress = useCallback((recommendation: PokemonRecommendation) => {
     navigation.navigate('PokemonDetail', {
@@ -82,60 +90,35 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
     const pokemon = recommendation.pokemon;
     
     if (isPokemonInTeam(pokemon.id)) {
-      Alert.alert(
-        'Pokémon já está na equipe',
-        `${pokemon.name} já faz parte da sua equipe!`
-      );
+      showToast(`${pokemon.name} já está na equipe!`, 'warning');
       return;
     }
 
     if (isTeamFull()) {
-      Alert.alert(
-        'Equipe cheia',
-        'Sua equipe já tem 6 Pokémon. Remova um Pokémon primeiro.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Ver Equipe', 
-            onPress: () => navigation.navigate('Team') 
-          }
-        ]
+      showToast(
+        'Equipe cheia! Remova um Pokémon primeiro.',
+        'warning',
+        'Ver Equipe',
+        () => navigation.navigate('Team')
       );
       return;
     }
 
-    Alert.alert(
-      'Adicionar à equipe',
-      `Deseja adicionar ${pokemon.name} à sua equipe?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Adicionar', 
-          onPress: async () => {
-            try {
-              await addPokemonToTeam(pokemon);
-              Alert.alert(
-                'Sucesso!',
-                `${pokemon.name} foi adicionado à sua equipe!`,
-                [
-                  { text: 'OK' },
-                  { 
-                    text: 'Ver Equipe', 
-                    onPress: () => navigation.navigate('Team') 
-                  }
-                ]
-              );
-            } catch (error) {
-              Alert.alert(
-                'Erro',
-                error instanceof Error ? error.message : 'Erro ao adicionar Pokémon'
-              );
-            }
-          }
-        }
-      ]
-    );
-  }, [isPokemonInTeam, isTeamFull, addPokemonToTeam, navigation]);
+    try {
+      await addPokemonToTeam(pokemon);
+      showToast(
+        `${pokemon.name} adicionado à equipe!`,
+        'success',
+        'Ver Equipe',
+        () => navigation.navigate('Team')
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Erro ao adicionar Pokémon',
+        'error'
+      );
+    }
+  }, [isPokemonInTeam, isTeamFull, addPokemonToTeam, navigation, showToast]);
 
   const renderRecommendation = ({ item }: { item: PokemonRecommendation }) => (
     <RecommendationCard
@@ -200,15 +183,15 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
     
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="bulb-outline" size={64} color="#ccc" />
-        <Text style={styles.emptyTitle}>
+        <Ionicons name="bulb-outline" size={64} color={colors.textSecondary} />
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>
           Nenhuma recomendação encontrada
         </Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
           Tente adicionar mais Pokémon à sua equipe para obter melhores recomendações.
         </Text>
         <TouchableOpacity 
-          style={styles.emptyButton}
+          style={[styles.emptyButton, { backgroundColor: colors.primary }]}
           onPress={handleRefresh}
         >
           <Text style={styles.emptyButtonText}>Tentar Novamente</Text>
@@ -223,10 +206,10 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
     if (recommendations.length > 0) {
       return (
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.text }]}>
             {recommendations.length} recomendação{recommendations.length !== 1 ? 'ões' : ''} encontrada{recommendations.length !== 1 ? 's' : ''}
           </Text>
-          <Text style={styles.footerSubtext}>
+          <Text style={[styles.footerSubtext, { color: colors.textSecondary }]}>
             Baseado em sinergia de tipos, complementaridade de stats e estratégia de equipe
           </Text>
         </View>
@@ -238,25 +221,29 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaWrapper style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         {renderHeader()}
         <View style={styles.errorContainer}>
-          <Ionicons name="warning" size={64} color="#FF6B6B" />
-          <Text style={styles.errorTitle}>Erro ao carregar recomendações</Text>
-          <Text style={styles.errorMessage}>{error}</Text>
+          <Ionicons name="warning" size={64} color={colors.error} />
+          <Text style={[styles.errorTitle, { color: colors.text }]}>Erro ao carregar recomendações</Text>
+          <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>{error}</Text>
           <TouchableOpacity 
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: colors.error }]}
             onPress={handleRefresh}
           >
             <Text style={styles.retryButtonText}>Tentar Novamente</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+        <ToastComponent />
+      </SafeAreaWrapper>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaWrapper style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style="light" />
+      
       <FlatList
         data={recommendations}
         renderItem={renderRecommendation}
@@ -268,15 +255,17 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({
         refreshing={refreshing}
         onRefresh={handleRefresh}
         contentContainerStyle={styles.listContainer}
+        style={{ backgroundColor: colors.background }}
       />
-    </SafeAreaView>
+      
+      <ToastComponent />
+    </SafeAreaWrapper>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   listContainer: {
     flexGrow: 1,
@@ -336,20 +325,17 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
@@ -366,12 +352,10 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 4,
   },
   footerSubtext: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -387,20 +371,17 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#FF6B6B',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,

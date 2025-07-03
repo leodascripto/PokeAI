@@ -10,13 +10,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pokemon } from '../types/pokemon';
 import { usePokemon } from '../hooks/usePokemon';
 import { useTeam } from '../hooks/useTeam';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../components/Toast';
 import { PokemonList } from '../components/PokemonList';
+import { SafeAreaWrapper } from '../components/SafeAreaWrapper';
 
 interface HomeScreenProps {
   navigation: any;
@@ -121,10 +121,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }, [isPokemonInTeam, isTeamFull, addPokemonToTeam, navigation, showToast]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaWrapper style={{ backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      {/* Header fixo com espaçamento adequado */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
           <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
@@ -157,7 +156,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Lista com padding bottom adequado para tab bar */}
       <PokemonList
         pokemon={displayedPokemon}
         loading={loading}
@@ -182,20 +180,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       />
       
       <ToastComponent />
-    </SafeAreaView>
+    </SafeAreaWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingTop: Platform.OS === 'ios' ? 8 : 16, // Espaçamento extra no iOS
     borderBottomWidth: 1,
     elevation: 2,
     shadowColor: '#000',

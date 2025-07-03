@@ -10,7 +10,7 @@ interface PokemonDetailedInfoProps {
 }
 
 export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemon }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const getBaseStatTotal = () => {
     return pokemon.stats.reduce((total, stat) => total + stat.base_stat, 0);
@@ -38,13 +38,11 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
   };
 
   const getGrowthRate = () => {
-    // Simulando taxa de crescimento baseada no ID (na API real viria da espécie)
     const growthRates = ['slow', 'medium-slow', 'medium', 'medium-fast', 'fast', 'fluctuating'];
     return growthRates[pokemon.id % growthRates.length];
   };
 
   const getEggGroups = () => {
-    // Simulando grupos de ovos baseado nos tipos
     const eggGroups: Record<string, string[]> = {
       'fire': ['Field', 'Dragon'],
       'water': ['Water 1', 'Water 2'],
@@ -66,18 +64,16 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
       'normal': ['Field', 'Normal']
     };
     
-    const primaryType = pokemon.types[0].type.name;
+    const primaryType = pokemon.types[0]?.type?.name || 'normal';
     return eggGroups[primaryType] || ['Field', 'Normal'];
   };
 
   const getCaptureRate = () => {
-    // Simulando taxa de captura baseada no ID e raridade
     const baseRate = Math.max(3, Math.min(255, 300 - pokemon.id * 2));
     return baseRate;
   };
 
   const getBaseHappiness = () => {
-    // Simulando felicidade base
     return pokemon.types.some(t => t.type.name === 'fairy') ? 140 : 70;
   };
 
@@ -127,7 +123,9 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
   };
 
   const renderPhysicalInfo = () => {
-    const bmi = (pokemon.weight / 10) / Math.pow(pokemon.height / 10, 2);
+    const height = pokemon.height ? pokemon.height / 10 : 0;
+    const weight = pokemon.weight ? pokemon.weight / 10 : 0;
+    const bmi = weight > 0 && height > 0 ? weight / Math.pow(height, 2) : 0;
     
     return (
       <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -142,7 +140,7 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
               <Ionicons name="resize" size={16} color={colors.textSecondary} />
               <Text style={[styles.physicalInfoLabel, { color: colors.textSecondary }]}>Altura</Text>
               <Text style={[styles.physicalInfoValue, { color: colors.text }]}>
-                {(pokemon.height / 10).toFixed(1)} m
+                {height.toFixed(1)} m
               </Text>
             </View>
             
@@ -150,7 +148,7 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
               <Ionicons name="barbell" size={16} color={colors.textSecondary} />
               <Text style={[styles.physicalInfoLabel, { color: colors.textSecondary }]}>Peso</Text>
               <Text style={[styles.physicalInfoValue, { color: colors.text }]}>
-                {(pokemon.weight / 10).toFixed(1)} kg
+                {weight.toFixed(1)} kg
               </Text>
             </View>
           </View>
@@ -160,7 +158,7 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
               <Ionicons name="speedometer" size={16} color={colors.textSecondary} />
               <Text style={[styles.physicalInfoLabel, { color: colors.textSecondary }]}>IMC</Text>
               <Text style={[styles.physicalInfoValue, { color: colors.text }]}>
-                {bmi.toFixed(1)}
+                {bmi > 0 ? bmi.toFixed(1) : 'N/A'}
               </Text>
             </View>
             
@@ -224,7 +222,7 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
         </View>
         
         <View style={styles.abilitiesContainer}>
-          {pokemon.abilities.map((ability, index) => (
+          {pokemon.abilities?.map((ability, index) => (
             <View key={index} style={[styles.abilityCard, { backgroundColor: colors.background }]}>
               <View style={styles.abilityHeader}>
                 <Text style={[styles.abilityName, { color: colors.text }]}>
@@ -244,7 +242,7 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
                   : 'Habilidade normal que pode ser encontrada naturalmente.'}
               </Text>
             </View>
-          ))}
+          )) || []}
         </View>
       </View>
     );

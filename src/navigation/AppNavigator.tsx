@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,21 +29,8 @@ const HomeStack = () => {
         options={{
           presentation: 'modal',
           cardOverlayEnabled: true,
-          cardStyleInterpolator: ({ current: { progress } }) => ({
-            cardStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 0.5, 0.9, 1],
-                outputRange: [0, 0.25, 0.7, 1],
-              }),
-            },
-            overlayStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.5],
-                extrapolate: 'clamp',
-              }),
-            },
-          }),
+          gestureEnabled: true,
+          animationTypeForReplace: 'push',
         }}
       />
       <Stack.Screen 
@@ -52,21 +39,8 @@ const HomeStack = () => {
         options={{
           presentation: 'modal',
           cardOverlayEnabled: true,
-          cardStyleInterpolator: ({ current: { progress } }) => ({
-            cardStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 0.5, 0.9, 1],
-                outputRange: [0, 0.25, 0.7, 1],
-              }),
-            },
-            overlayStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.5],
-                extrapolate: 'clamp',
-              }),
-            },
-          }),
+          gestureEnabled: true,
+          animationTypeForReplace: 'push',
         }}
       />
     </Stack.Navigator>
@@ -90,21 +64,8 @@ const TeamStack = () => {
         options={{
           presentation: 'modal',
           cardOverlayEnabled: true,
-          cardStyleInterpolator: ({ current: { progress } }) => ({
-            cardStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 0.5, 0.9, 1],
-                outputRange: [0, 0.25, 0.7, 1],
-              }),
-            },
-            overlayStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.5],
-                extrapolate: 'clamp',
-              }),
-            },
-          }),
+          gestureEnabled: true,
+          animationTypeForReplace: 'push',
         }}
       />
       <Stack.Screen 
@@ -113,21 +74,8 @@ const TeamStack = () => {
         options={{
           presentation: 'modal',
           cardOverlayEnabled: true,
-          cardStyleInterpolator: ({ current: { progress } }) => ({
-            cardStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 0.5, 0.9, 1],
-                outputRange: [0, 0.25, 0.7, 1],
-              }),
-            },
-            overlayStyle: {
-              opacity: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.5],
-                extrapolate: 'clamp',
-              }),
-            },
-          }),
+          gestureEnabled: true,
+          animationTypeForReplace: 'push',
         }}
       />
     </Stack.Navigator>
@@ -202,9 +150,11 @@ const TabNavigator = () => {
 export const AppNavigator = () => {
   const { colors, isDark } = useTheme();
   
-  const theme = {
-    dark: isDark,
+  // Criar um tema customizado baseado no React Navigation
+  const navigationTheme = {
+    ...isDark ? DarkTheme : DefaultTheme,
     colors: {
+      ...isDark ? DarkTheme.colors : DefaultTheme.colors,
       primary: colors.primary,
       background: colors.background,
       card: colors.surface,
@@ -215,7 +165,7 @@ export const AppNavigator = () => {
   };
 
   return (
-    <NavigationContainer theme={theme}>
+    <NavigationContainer theme={navigationTheme}>
       <TabNavigator />
     </NavigationContainer>
   );

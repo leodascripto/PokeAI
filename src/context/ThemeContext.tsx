@@ -66,7 +66,16 @@ const darkColors: ThemeColors = {
   shadow: '#000000'
 };
 
-const ThemeContext = createContext<ThemeContextData>({} as ThemeContextData);
+// Criar um valor padrão para evitar erros de contexto
+const defaultContextValue: ThemeContextData = {
+  theme: 'light',
+  isDark: false,
+  colors: lightColors,
+  toggleTheme: () => {},
+  setTheme: () => {}
+};
+
+const ThemeContext = createContext<ThemeContextData>(defaultContextValue);
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -74,6 +83,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('system');
+  const [isLoading, setIsLoading] = useState(true);
   const systemColorScheme = useColorScheme();
 
   const isDark = theme === 'dark' || (theme === 'system' && systemColorScheme === 'dark');
@@ -86,11 +96,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const loadTheme = async () => {
     try {
       const savedTheme = await AsyncStorage.getItem('@theme');
-      if (savedTheme) {
+      if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
         setTheme(savedTheme as Theme);
       }
     } catch (error) {
       console.error('Error loading theme:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -113,6 +125,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     saveTheme(newTheme);
   };
 
+  // Se ainda está carregando, usar valores padrão
+  if (isLoading) {
+    return (
+      <ThemeContext.Provider value={defaultContextValue}>
+        {children}
+      </ThemeContext.Provider>
+    );
+  }
+
   return (
     <ThemeContext.Provider
       value={{
@@ -131,7 +152,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    console.warn('useTheme must be used within a ThemeProvider, returning default values');
+    return defaultContextValue;
   }
   return context;
 };
