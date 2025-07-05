@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 # 🎮 PokeAI - Pokémon Team Builder
+=======
+# 🎮 PokéAI
+>>>>>>> origin/main
 
 Um aplicativo React Native inteligente para criar e gerenciar equipes Pokémon, com sistema de recomendações baseado em IA e análise estratégica avançada.
+
+<p align="center">
+  <img src="https://i.ibb.co/8nJPNxQc/Pok-AI-05-07-2025-1.png" alt="PokéAI Banner" width="80%" />
+</p>
 
 ## ✨ Funcionalidades
 
@@ -375,10 +383,6 @@ refactor: reorganiza estrutura de pastas
 test: adiciona testes para hook useTeam
 ```
 
-## 📄 **Licença**
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
 ## 🙏 **Agradecimentos**
 
 - **[PokéAPI](https://pokeapi.co/)** - API completa de dados Pokémon
@@ -387,6 +391,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 - **Comunidade Pokémon** - Inspiração e feedback constante
 - **Desenvolvedores Open Source** - Bibliotecas e ferramentas
 
+<<<<<<< HEAD
 ## 📞 **Contato e Suporte**
 
 - **Issues**: [GitHub Issues](https://github.com/seu-usuario/pokeai/issues)
@@ -413,6 +418,8 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 - [ ] Predições de matchups
 - [ ] Recomendações contextuais
 
+=======
+>>>>>>> origin/main
 ---
 
 <div align="center">
@@ -423,6 +430,12 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 </div>
 
 <div align="center">
+<<<<<<< HEAD
   <h3>🚀 Feito com ❤️ e IA para a comunidade Pokémon</h3>
   <p><strong>Gotta build 'em all!</strong> 🎮✨</p>
 </div>
+=======
+  <h3>Feito com ❤️ para a comunidade Pokémon</h3>
+  <p>Gotta code 'em all! 🚀</p>
+</div>
+>>>>>>> origin/main
