@@ -1,4 +1,4 @@
-# 🎮 Pokémon Team Builder
+# 🎮 PokéAI
 
 Um aplicativo React Native moderno para criar e gerenciar equipes Pokémon, com sistema de autenticação Firebase e recomendações inteligentes baseadas em sinergia de tipos e estatísticas.
 
