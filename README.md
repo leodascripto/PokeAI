@@ -85,7 +85,6 @@ Escolha entre 8 estratégias diferentes, cada uma com sua própria "personalidad
 - Toque em "Recomendações" para ativar a IA
 - Veja sugestões personalizadas com explicações
 - Adicione os Pokémon sugeridos com um toque
-
 ---
 
 ## 🌟 **Por que o PokéAI é Especial?**
@@ -96,7 +95,7 @@ Escolha entre 8 estratégias diferentes, cada uma com sua própria "personalidad
 - Animações suaves que deixam tudo mais dinâmico
 
 ### **🧠 IA que Realmente Entende Pokémon**
-- Não é só uma lista aleatória - cada sugestão tem um motivo
+- Não é só uma lista aleatória, cada sugestão tem um propósito
 - Considera tipos, estatísticas, roles e sinergia
 - Aprende com suas escolhas para melhorar as recomendações
 
@@ -104,7 +103,6 @@ Escolha entre 8 estratégias diferentes, cada uma com sua própria "personalidad
 - Todos os dados principais ficam salvos no seu celular
 - Use em qualquer lugar, mesmo sem internet
 - Sincronização automática quando conectado
-- 
 ---
 
 ## 📊 **Tecnologia por Trás da Magia**
@@ -150,14 +148,14 @@ Escolha entre 8 estratégias diferentes, cada uma com sua própria "personalidad
 
 <div align="center">
   
-### **🔥 Pronto para criar a equipe Pokémon perfeita?**
+### **📱 FAÇA O DOWNLOAD AGORA! 📱**
 
-<img src="https://img.shields.io/badge/Download-Em_Breve-brightgreen?style=for-the-badge&logo=download" />
+<a href="https://expo.dev/artifacts/eas/o8iN5tbbfTRih1BjV2hW9t.apk">
+  <img src="https://img.shields.io/badge/📲_BAIXAR_APK-DISPONÍVEL_AGORA-FF6B6B?style=for-the-badge&logo=android&logoColor=white" alt="Download PokéAI APK" />
+</a>
 
-> **💡 Dica:** Comece com a estratégia "Balanceada" se você é novo no mundo dos Pokémon!
 
----
-
+> **💡 Dica:** Comece com a estratégia "Balanceada" se você é novo no mundo Pokémon!
 </div>
 
 ---
