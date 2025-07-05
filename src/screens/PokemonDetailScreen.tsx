@@ -1,4 +1,4 @@
-// src/screens/PokemonDetailScreen.tsx - CORRIGIDO
+// src/screens/PokemonDetailScreen.tsx - SCROLL CORRIGIDO
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -224,6 +224,21 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
     </View>
   );
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'stats':
+        return renderStats();
+      case 'info':
+        return renderInfo();
+      case 'detailed':
+        return <PokemonDetailedInfo pokemon={pokemon} />;
+      case 'location':
+        return <PokemonLocationInfo pokemon={pokemon} />;
+      default:
+        return renderStats();
+    }
+  };
+
   const actionButtonHeight = 80;
 
   return (
@@ -276,10 +291,10 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
         </View>
       </LinearGradient>
 
-      {/* Content scrollável */}
+      {/* Content área */}
       <View style={[styles.content, { backgroundColor: colors.background }]}>
-        {/* Tabs */}
-        <View style={styles.tabs}>
+        {/* Tabs fixas */}
+        <View style={[styles.tabs, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <TouchableOpacity 
             style={[
               styles.tab, 
@@ -291,7 +306,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
               styles.tabText, 
               { color: activeTab === 'stats' ? colors.primary : colors.textSecondary }
             ]}>
-              Estatísticas
+              Stats
             </Text>
           </TouchableOpacity>
           
@@ -306,7 +321,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
               styles.tabText, 
               { color: activeTab === 'info' ? colors.primary : colors.textSecondary }
             ]}>
-              Informações
+              Info
             </Text>
           </TouchableOpacity>
           
@@ -336,24 +351,23 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
               styles.tabText, 
               { color: activeTab === 'location' ? colors.primary : colors.textSecondary }
             ]}>
-              Localização
+              Local
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ScrollView com conteúdo das tabs */}
+        {/* Conteúdo scrollável da aba ativa */}
         <ScrollView 
-          style={styles.scrollContainer} 
-          showsVerticalScrollIndicator={false}
+          style={styles.scrollContainer}
           contentContainerStyle={[
             styles.scrollContent,
             { paddingBottom: actionButtonHeight + insets.bottom + 20 }
           ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
         >
-          {activeTab === 'stats' && renderStats()}
-          {activeTab === 'info' && renderInfo()}
-          {activeTab === 'detailed' && <PokemonDetailedInfo pokemon={pokemon} />}
-          {activeTab === 'location' && <PokemonLocationInfo pokemon={pokemon} />}
+          {renderTabContent()}
         </ScrollView>
       </View>
 
@@ -453,6 +467,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
+    borderBottomWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.41,
   },
   tab: {
     flex: 1,
@@ -473,10 +496,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingTop: 10,
   },
   tabContent: {
     paddingHorizontal: 20,
-    paddingTop: 10,
   },
   statRow: {
     flexDirection: 'row',

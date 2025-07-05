@@ -1,3 +1,4 @@
+// src/components/PokemonDetailedInfo.tsx - SCROLL OTIMIZADO
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -261,7 +262,7 @@ export const PokemonDetailedInfo: React.FC<PokemonDetailedInfoProps> = ({ pokemo
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingBottom: 20,
   },
   section: {
     borderRadius: 16,

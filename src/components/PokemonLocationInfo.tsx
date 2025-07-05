@@ -1,5 +1,6 @@
+// src/components/PokemonLocationInfo.tsx - SCROLL CORRIGIDO
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Pokemon } from '../types/pokemon';
 import { ProcessedPokemonLocation, ProcessedEncounter, GameVersion } from '../types/pokemonLocation';
@@ -18,11 +19,11 @@ export const PokemonLocationInfo: React.FC<PokemonLocationInfoProps> = ({ pokemo
 
   const getGameVersionIcon = (versions: string[]) => {
     if (versions.includes('firered') && versions.includes('leafgreen')) {
-      return '🔴🍃'; // Both versions
+      return '🔴🍃';
     } else if (versions.includes('firered')) {
-      return '🔴'; // FireRed only
+      return '🔴';
     } else if (versions.includes('leafgreen')) {
-      return '🍃'; // LeafGreen only
+      return '🍃';
     }
     return '🎮';
   };
@@ -74,11 +75,13 @@ export const PokemonLocationInfo: React.FC<PokemonLocationInfoProps> = ({ pokemo
         {encounter.conditions.length > 0 && (
           <View style={styles.conditionsContainer}>
             <Text style={[styles.conditionsTitle, { color: colors.textSecondary }]}>Condições:</Text>
-            {encounter.conditions.map((condition, condIndex) => (
-              <View key={condIndex} style={[styles.conditionTag, { backgroundColor: colors.primary + '20' }]}>
-                <Text style={[styles.conditionText, { color: colors.primary }]}>{condition}</Text>
-              </View>
-            ))}
+            <View style={styles.conditionsRow}>
+              {encounter.conditions.map((condition, condIndex) => (
+                <View key={condIndex} style={[styles.conditionTag, { backgroundColor: colors.primary + '20' }]}>
+                  <Text style={[styles.conditionText, { color: colors.primary }]}>{condition}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
@@ -149,30 +152,30 @@ export const PokemonLocationInfo: React.FC<PokemonLocationInfoProps> = ({ pokemo
 
   if (error) {
     return (
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.container}>
         {renderErrorMessage()}
-      </ScrollView>
+      </View>
     );
   }
 
   if (isEvolutionOnly) {
     return (
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.container}>
         {renderEvolutionOnlyMessage()}
-      </ScrollView>
+      </View>
     );
   }
 
   if (!location) {
     return (
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.container}>
         {renderNoLocationMessage()}
-      </ScrollView>
+      </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {/* Header com informações das versões */}
       <View style={[styles.headerContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.headerContent}>
@@ -186,11 +189,11 @@ export const PokemonLocationInfo: React.FC<PokemonLocationInfoProps> = ({ pokemo
         </View>
       </View>
 
-      {/* Lista de localizações */}
+      {/* Lista de localizações - REMOVIDO ScrollView, agora é só View */}
       <View style={styles.locationsContainer}>
         {location.locations.map((locationData, index) => renderLocation(locationData, index))}
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -198,7 +201,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 10,
   },
   headerContainer: {
     borderRadius: 16,
@@ -323,13 +325,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 6,
   },
+  conditionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
   conditionTag: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    marginRight: 6,
     marginBottom: 4,
-    alignSelf: 'flex-start',
   },
   conditionText: {
     fontSize: 10,
