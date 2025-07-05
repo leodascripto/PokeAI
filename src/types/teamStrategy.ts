@@ -1,4 +1,4 @@
-// src/types/teamStrategy.ts
+// src/types/teamStrategy.ts - VERSÃO CORRIGIDA E COMPLETA
 export type TeamStrategyType = 
   | 'balanced'
   | 'mono_type'
@@ -53,12 +53,13 @@ export interface MonoTypeStrategy extends TeamStrategy {
   selectedType: string;
 }
 
+// Estratégias com dados mais completos e consistentes
 export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   balanced: {
     type: 'balanced',
     name: 'Balanceada',
-    description: 'Uma equipe equilibrada com boa cobertura de tipos e roles variados',
-    icon: 'balance-scale',
+    description: 'Equipe equilibrada com boa cobertura de tipos e roles variados',
+    icon: 'balance',
     preferences: {
       statPriorities: {
         hp: 1.0,
@@ -97,7 +98,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
     type: 'mono_type',
     name: 'Mono Tipo',
     description: 'Equipe focada em um único tipo Pokémon',
-    icon: 'filter',
+    icon: 'funnel',
     preferences: {
       typeDistribution: {
         preferred: [], // Será definido dinamicamente
@@ -127,13 +128,13 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
       }
     },
     warnings: [
-      'Extremamente vulnerável aos tipos que são efetivos contra o seu tipo escolhido',
+      'Extremamente vulnerável aos tipos efetivos contra o seu tipo',
       'Pode ter dificuldades contra certos oponentes',
       'Estratégia de alto risco e alta recompensa'
     ],
     tips: [
       'Varie as estatísticas para diferentes situações',
-      'Considere Pokémon com tipos secundários que ajudem defensivamente',
+      'Considere Pokémon com tipos secundários que ajudem',
       'Tenha sempre um plano para cobrir as fraquezas do tipo'
     ]
   },
@@ -141,7 +142,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   offensive: {
     type: 'offensive',
     name: 'Ofensiva',
-    description: 'Equipe focada em alto dano e velocidade',
+    description: 'Equipe focada em alto dano e velocidade para eliminar rapidamente',
     icon: 'flash',
     preferences: {
       statPriorities: {
@@ -181,7 +182,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   defensive: {
     type: 'defensive',
     name: 'Defensiva',
-    description: 'Equipe focada em resistência e controle',
+    description: 'Equipe focada em resistência, controle e sustentabilidade',
     icon: 'shield',
     preferences: {
       statPriorities: {
@@ -221,7 +222,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   speed: {
     type: 'speed',
     name: 'Velocidade',
-    description: 'Equipe focada em controle de velocidade e primeiro turno',
+    description: 'Controle total do campo através de velocidade superior',
     icon: 'speedometer',
     preferences: {
       statPriorities: {
@@ -247,12 +248,12 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
       }
     },
     warnings: [
-      'Extremamente frágil se perder o controle de velocidade',
+      'Extremamente frágil se perder controle de velocidade',
       'Dependente de moves de prioridade em emergências',
       'Pode ter problemas contra walls muito tanky'
     ],
     tips: [
-      'Todos os Pokémon devem ter Speed alta',
+      'Todos os Pokémon devem ter Speed alta (100+)',
       'Considere moves de priority como backup',
       'Foque em KOs em um hit sempre que possível'
     ]
@@ -261,7 +262,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   weather: {
     type: 'weather',
     name: 'Clima',
-    description: 'Equipe focada em aproveitamento de condições climáticas',
+    description: 'Aproveitamento máximo de condições climáticas específicas',
     icon: 'partly-sunny',
     preferences: {
       statPriorities: {
@@ -301,7 +302,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   dual_core: {
     type: 'dual_core',
     name: 'Núcleo Duplo',
-    description: 'Equipe construída ao redor de dois Pokémon principais',
+    description: 'Estratégia construída ao redor de dois Pokémon principais',
     icon: 'people',
     preferences: {
       statPriorities: {
@@ -341,7 +342,7 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
   stall: {
     type: 'stall',
     name: 'Stall',
-    description: 'Equipe focada em outlast o oponente através de recovery',
+    description: 'Outlast o oponente através de recovery e desgaste',
     icon: 'hourglass',
     preferences: {
       statPriorities: {
@@ -378,3 +379,21 @@ export const TEAM_STRATEGIES: Record<TeamStrategyType, TeamStrategy> = {
     ]
   }
 };
+
+// Função utilitária para verificar se as estratégias estão carregadas
+export const validateStrategies = (): boolean => {
+  const strategies = Object.keys(TEAM_STRATEGIES);
+  console.log('📋 Validando estratégias:', strategies.length, 'encontradas');
+  
+  return strategies.length === 8 && strategies.every(key => {
+    const strategy = TEAM_STRATEGIES[key as TeamStrategyType];
+    const isValid = !!(strategy?.name && strategy?.description && strategy?.preferences);
+    console.log(`✅ Estratégia ${key}:`, isValid ? 'válida' : 'inválida');
+    return isValid;
+  });
+};
+
+// Debug: Log das estratégias quando o módulo for importado
+console.log('🚀 teamStrategy.ts carregado');
+console.log('📊 Total de estratégias definidas:', Object.keys(TEAM_STRATEGIES).length);
+validateStrategies();

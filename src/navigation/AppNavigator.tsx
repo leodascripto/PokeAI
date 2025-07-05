@@ -6,67 +6,23 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { HomeScreen } from '../screens/HomeScreen';
-import { EnhancedTeamScreen } from '../screens/EnhancedTeamScreen'; // Usar versão Enhanced
+import { EnhancedTeamScreen } from '../screens/EnhancedTeamScreen';
 import { PokemonDetailScreen } from '../screens/PokemonDetailScreen';
-import { EnhancedRecommendationsScreen } from '../screens/EnhancedRecommendationsScreen'; // Usar versão Enhanced
-// import type { Pokemon } from '../models/Pokemon'; // Ajuste o caminho conforme necessário
-// FIX: Update the import path below to the correct location of your Pokemon type definition
-import type { Pokemon } from '../types/pokemon'; // Ajuste o caminho conforme necessário
+import { EnhancedRecommendationsScreen } from '../screens/EnhancedRecommendationsScreen';
+import type { Pokemon } from '../types/pokemon';
 
 type RootStackParamList = {
   HomeMain: undefined;
-  PokemonDetail: { pokemonId: number; pokemon?: Pokemon }; // Ensure params match PokemonDetailScreenProps
+  PokemonDetail: { pokemonId: number; pokemon?: Pokemon };
   Recommendations: { targetPokemon?: Pokemon; currentTeam: (Pokemon | null)[] };
-  TeamMain?: undefined;
+  TeamMain: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
+// Stack para Home/Pokédex
 const HomeStack = () => {
-  const { colors } = useTheme();
-  
-  return (
-    <Stack.Navigator
-      screenOptions={{
-      headerShown: false,
-      cardStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Stack.Screen name="HomeMain" component={HomeScreen} />
-      <Stack.Screen 
-      name="PokemonDetail" 
-      component={({
-        navigation,
-        route,
-      }: {
-        navigation: import('@react-navigation/native').NavigationProp<RootStackParamList, 'PokemonDetail'>;
-        route: import('@react-navigation/native').RouteProp<RootStackParamList, 'PokemonDetail'>;
-      }) => (
-        <PokemonDetailScreen navigation={navigation} route={route} />
-      )}
-      options={{
-        presentation: 'modal',
-        cardOverlayEnabled: true,
-        gestureEnabled: true,
-        animationTypeForReplace: 'push',
-      }}
-      />
-      <Stack.Screen 
-      name="Recommendations" 
-      component={EnhancedRecommendationsScreen}
-      options={{
-        presentation: 'modal',
-        cardOverlayEnabled: true,
-        gestureEnabled: true,
-        animationTypeForReplace: 'push',
-      }}
-      />
-    </Stack.Navigator>
-  );
-};
-
-const TeamStack = () => {
   const { colors } = useTheme();
   
   return (
@@ -76,7 +32,7 @@ const TeamStack = () => {
         cardStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="TeamMain" component={EnhancedTeamScreen} /> {/* Usar versão Enhanced */}
+      <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen 
         name="PokemonDetail" 
         component={PokemonDetailScreen}
@@ -101,6 +57,43 @@ const TeamStack = () => {
   );
 };
 
+// Stack para Team
+const TeamStack = () => {
+  const { colors } = useTheme();
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="TeamMain" component={EnhancedTeamScreen} />
+      <Stack.Screen 
+        name="PokemonDetail" 
+        component={PokemonDetailScreen}
+        options={{
+          presentation: 'modal',
+          cardOverlayEnabled: true,
+          gestureEnabled: true,
+          animationTypeForReplace: 'push',
+        }}
+      />
+      <Stack.Screen 
+        name="Recommendations" 
+        component={EnhancedRecommendationsScreen}
+        options={{
+          presentation: 'modal',
+          cardOverlayEnabled: true,
+          gestureEnabled: true,
+          animationTypeForReplace: 'push',
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+// Tab Navigator principal
 const TabNavigator = () => {
   const { colors, isDark } = useTheme();
   
@@ -166,6 +159,7 @@ const TabNavigator = () => {
   );
 };
 
+// Navegador principal da aplicação
 export const AppNavigator = () => {
   const { colors, isDark } = useTheme();
   

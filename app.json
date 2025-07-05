@@ -1,34 +1,177 @@
 {
-  "expo": {
-    "name": "AppNavigation",
-    "slug": "AppNavigation",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+  "configFiles": {
+    "app.json": {
+      "expo": {
+        "name": "PokeAI",
+        "slug": "pokeai",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "light",
+        "newArchEnabled": true,
+        "splash": {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#667eea"
+        },
+        "ios": {
+          "supportsTablet": true,
+          "bundleIdentifier": "com.leooli.pokeai",
+          "buildNumber": "1"
+        },
+        "android": {
+          "adaptiveIcon": {
+            "foregroundImage": "./assets/adaptive-icon.png",
+            "backgroundColor": "#667eea"
+          },
+          "edgeToEdgeEnabled": true,
+          "package": "com.leooli.pokeai",
+          "versionCode": 1
+        },
+        "web": {
+          "favicon": "./assets/favicon.png",
+          "bundler": "metro"
+        },
+        "plugins": [
+          "expo-router"
+        ],
+        "experiments": {
+          "typedRoutes": true
+        },
+        "extra": {
+          "eas": {
+            "projectId": "46a1d374-92dd-4420-a534-0f86cb11ee90"
+          }
+        }
+      }
     },
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+    "eas.json": {
+      "cli": {
+        "version": ">= 5.2.0"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.leooli.pokeia"
+      "build": {
+        "development": {
+          "developmentClient": true,
+          "distribution": "internal",
+          "android": {
+            "gradleCommand": ":app:assembleDebug"
+          },
+          "ios": {
+            "buildConfiguration": "Debug"
+          }
+        },
+        "preview": {
+          "distribution": "internal",
+          "android": {
+            "buildType": "apk"
+          },
+          "ios": {
+            "simulator": true
+          }
+        },
+        "production": {
+          "android": {
+            "buildType": "apk"
+          },
+          "ios": {
+            "buildConfiguration": "Release"
+          }
+        }
+      },
+      "submit": {
+        "production": {
+          "android": {
+            "serviceAccountKeyPath": "../path/to/api-key.json",
+            "track": "internal"
+          },
+          "ios": {
+            "appleId": "your-apple-id@example.com",
+            "ascAppId": "1234567890",
+            "appleTeamId": "ABCDEFGHIJ"
+          }
+        }
+      }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "package.json": {
+      "name": "pokeai",
+      "version": "1.0.0",
+      "description": "PokeAI - Intelligent Pokémon Team Builder with AI recommendations",
+      "main": "index.ts",
+      "scripts": {
+        "start": "expo start",
+        "android": "expo start --android",
+        "ios": "expo start --ios",
+        "web": "expo start --web",
+        "clean": "expo start --clear",
+        "build:android": "eas build --platform android",
+        "build:ios": "eas build --platform ios",
+        "build:all": "eas build --platform all",
+        "build:preview": "eas build --profile preview",
+        "build:production": "eas build --profile production",
+        "submit:android": "eas submit --platform android",
+        "submit:ios": "eas submit --platform ios"
+      },
+      "keywords": [
+        "pokemon",
+        "team-builder",
+        "ai",
+        "react-native",
+        "expo",
+        "mobile-app"
+      ],
+      "author": "Leo Oli <leo@example.com>",
+      "license": "MIT",
+      "dependencies": {
+        "@expo/metro-runtime": "~5.0.4",
+        "@expo/vector-icons": "^14.1.0",
+        "@react-native-async-storage/async-storage": "2.1.2",
+        "@react-navigation/bottom-tabs": "^7.4.2",
+        "@react-navigation/native": "^7.1.14",
+        "@react-navigation/stack": "^7.4.2",
+        "axios": "^1.10.0",
+        "expo": "~53.0.17",
+        "expo-linear-gradient": "^14.1.5",
+        "expo-status-bar": "~2.2.3",
+        "react": "19.0.0",
+        "react-dom": "19.0.0",
+        "react-native": "0.79.5",
+        "react-native-gesture-handler": "~2.24.0",
+        "react-native-linear-gradient": "^2.8.3",
+        "react-native-safe-area-context": "5.4.0",
+        "react-native-screens": "~4.11.1",
+        "react-native-svg": "15.11.2",
+        "react-native-web": "^0.20.0"
+      },
+      "devDependencies": {
+        "@babel/core": "^7.25.2",
+        "@types/react": "~19.0.10",
+        "@types/react-native": "^0.72.8",
+        "eas-cli": "^16.13.3",
+        "typescript": "~5.8.3"
+      },
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/leooli/pokeai.git"
+      },
+      "bugs": {
+        "url": "https://github.com/leooli/pokeai/issues"
+      },
+      "homepage": "https://github.com/leooli/pokeai#readme",
+      "private": true
+    }
+  },
+  "extra": {
+    "eas": {
+      "projectId": "3a4ee462-55c0-4952-b392-1c467e4d57c7"
+    }
+  },
+  "expo": {
+    "android": {
+      "package": "com.leooli321.pokeai"
     },
     "extra": {
       "eas": {
-        "projectId": "46a1d374-92dd-4420-a534-0f86cb11ee90"
+        "projectId": "3a4ee462-55c0-4952-b392-1c467e4d57c7"
       }
     }
   }
