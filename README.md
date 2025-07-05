@@ -2,6 +2,10 @@
 
 Um aplicativo React Native moderno para criar e gerenciar equipes Pokémon, com sistema de autenticação Firebase e recomendações inteligentes baseadas em sinergia de tipos e estatísticas.
 
+<p align="center">
+  <img src="https://i.ibb.co/8nJPNxQc/Pok-AI-05-07-2025-1.png" alt="PokéAI Banner" width="80%" />
+</p>
+
 ## ✨ Funcionalidades
 
 ### 🔐 **Autenticação**
@@ -306,23 +310,12 @@ eas submit --platform ios
 - **Conventional Commits** para mensagens
 - **Component-driven** development
 
-## 📄 **Licença**
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
 ## 🙏 **Agradecimentos**
 
 - **[PokéAPI](https://pokeapi.co/)** - Dados dos Pokémon
 - **[Firebase](https://firebase.google.com/)** - Backend e autenticação
 - **[Expo](https://expo.dev/)** - Framework de desenvolvimento
 - **Comunidade Pokémon** - Inspiração e feedback
-
-## 📞 **Contato**
-
-- **Desenvolvedor**: [Seu Nome]
-- **Email**: seu.email@exemplo.com
-- **LinkedIn**: [Seu LinkedIn]
-- **GitHub**: [Seu GitHub]
 
 ---
 
