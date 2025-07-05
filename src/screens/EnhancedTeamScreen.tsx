@@ -54,7 +54,22 @@ export const EnhancedTeamScreen: React.FC<EnhancedTeamScreenProps> = ({ navigati
   } = useTeamStrategy();
 
   const strategyAnalysis = useStrategyAnalysis(team, currentStrategy);
-  const teamStats = getTeamStats();
+  const defaultTeamStats = {
+    teamSize: 0,
+    averageStats: {
+      hp: 0,
+      attack: 0,
+      defense: 0,
+      specialAttack: 0,
+      specialDefense: 0,
+      speed: 0,
+    },
+    typeDistribution: {} as Record<string, number>,
+  };
+  const rawTeamStats = getTeamStats();
+  const teamStats = rawTeamStats && rawTeamStats.averageStats
+    ? rawTeamStats
+    : defaultTeamStats;
 
   useFocusEffect(
     useCallback(() => {

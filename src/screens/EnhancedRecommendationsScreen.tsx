@@ -267,8 +267,8 @@ export const EnhancedRecommendationsScreen: React.FC<EnhancedRecommendationsScre
 
   const renderHeader = () => {
     const teamPokemon = currentTeam.filter(p => p !== null) as Pokemon[];
-    const gradient = teamPokemon.length > 0 
-      ? getTypeGradient(teamPokemon[0].types[0].type.name)
+    const gradient: [string, string, ...string[]] = teamPokemon.length > 0 
+      ? getTypeGradient(teamPokemon[0].types[0].type.name) as [string, string, ...string[]]
       : ['#667eea', '#764ba2'];
 
     return (

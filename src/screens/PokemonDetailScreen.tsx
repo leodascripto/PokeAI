@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -20,6 +21,7 @@ import { useToast } from '../components/Toast';
 import { getTypeColor, getTypeGradient } from '../utils/typeColors';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PokemonDetailedInfo } from '../components/PokemonDetailedInfo';
+import { PokemonLocationInfo } from '../components/PokemonLocationInfo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PokemonDetailScreenProps {
@@ -135,7 +137,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   }
 
   const primaryType = pokemon.types[0].type.name;
-  const gradient = getTypeGradient(primaryType);
+  const gradient = getTypeGradient(primaryType) as [string, string, ...string[]];
   const inTeam = isPokemonInTeam(pokemon.id);
 
   const getStatBarWidth = (baseStat: number) => {

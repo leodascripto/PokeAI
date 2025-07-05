@@ -60,6 +60,40 @@ class PokemonApiService {
     }
   }
 
+  async getPokemonSpecies(id: number) {
+    const cacheKey = `species_${id}`;
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pokemon-species/${id}`);
+      this.cache.set(cacheKey, response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar espécie do Pokemon ${id}:`, error);
+      return null;
+    }
+  }
+
+  async getPokemonEncounters(id: number) {
+    const cacheKey = `encounters_${id}`;
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pokemon/${id}/encounters`);
+      this.cache.set(cacheKey, response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar encontros do Pokemon ${id}:`, error);
+      return [];
+    }
+  }
+
   async getFirst151Pokemon(): Promise<Pokemon[]> {
     const cacheKey = 'first_151';
     
