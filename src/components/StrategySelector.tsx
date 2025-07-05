@@ -1,4 +1,4 @@
-// src/components/StrategySelector.tsx
+// src/components/StrategySelector.tsx - CORRIGIDO
 import React, { useState } from 'react';
 import {
   View,
@@ -49,6 +49,7 @@ export const StrategySelector: React.FC<StrategySelectorProps> = ({
     const baseStrategy = TEAM_STRATEGIES.mono_type;
     const monoStrategy: MonoTypeStrategy = {
       ...baseStrategy,
+      type: "mono_type",
       selectedType: type,
       name: `Mono ${type.charAt(0).toUpperCase() + type.slice(1)}`,
       description: `Equipe focada exclusivamente em Pokémon do tipo ${type}`,
@@ -155,7 +156,7 @@ export const StrategySelector: React.FC<StrategySelectorProps> = ({
                   onPress={() => setSelectedType(type)}
                 >
                   <LinearGradient
-                    colors={getTypeGradient(type)}
+                    colors={getTypeGradient(type) as [import('react-native').ColorValue, import('react-native').ColorValue, ...import('react-native').ColorValue[]]}
                     style={styles.typeGradient}
                   >
                     <Text style={styles.typeText}>
@@ -231,192 +232,6 @@ export const StrategySelector: React.FC<StrategySelectorProps> = ({
             showsVerticalScrollIndicator={false}
           >
             {Object.keys(TEAM_STRATEGIES).map(strategyType => 
-              renderStrategyCard(strategyType as TeamStrategyType)
-            )}
-          </ScrollView>
-        </View>
-      </View>
-
-      {renderTypeSelector()}
-    </Modal>
-  );
-};
-
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    maxHeight: '85%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  strategiesList: {
-    flex: 1,
-    marginBottom: 20,
-  },
-  strategyCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 1.41,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  strategyName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  strategyDescription: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  cardDetails: {
-    gap: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tipsContainer: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
-    padding: 8,
-  },
-  tipsTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  tipText: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  // Type selector styles
-  typeModalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    maxHeight: '70%',
-  },
-  typeModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  typeModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  typeList: {
-    flex: 1,
-    marginBottom: 20,
-  },
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  typeCard: {
-    width: '48%',
-    height: 50,
-    borderRadius: 12,
-    marginBottom: 8,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 1.41,
-  },
-  selectedTypeCard: {
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  typeGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  typeText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  typeModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingBottom: 20,
-  },
-  typeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  typeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});TEAM_STRATEGIES).map(strategyType => 
               renderStrategyCard(strategyType as TeamStrategyType)
             )}
           </ScrollView>

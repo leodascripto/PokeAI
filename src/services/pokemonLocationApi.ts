@@ -1,3 +1,4 @@
+// src/services/pokemonLocationApi.ts - CORRIGIDO
 import axios from 'axios';
 import {
   PokemonEncounter,
@@ -24,11 +25,23 @@ class PokemonLocationApiService {
     }
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/pokemon/${pokemonId}/encounters`);
+      // Primeiro verifica se tem dados especiais
+      const specialData = this.getSpecialLocationInfo(pokemonId);
+      if (specialData) {
+        this.cache.set(cacheKey, specialData);
+        return specialData;
+      }
+
+      // Se não tem dados especiais, busca na API
+      const response = await axios.get(`${API_BASE_URL}/pokemon/${pokemonId}/encounters`, {
+        timeout: 10000 // 10 segundos de timeout
+      });
+      
       const encounters: PokemonEncounter[] = response.data;
       
       if (encounters.length === 0) {
-        // Pokémon não encontrado na natureza (starters, evoluções, etc.)
+        // Pokémon não encontrado na natureza
+        this.cache.set(cacheKey, null);
         return null;
       }
 
@@ -37,6 +50,16 @@ class PokemonLocationApiService {
       return processed;
     } catch (error) {
       console.error(`Erro ao buscar localizações do Pokémon ${pokemonId}:`, error);
+      
+      // Se houve erro, retorna dados especiais se existirem
+      const specialData = this.getSpecialLocationInfo(pokemonId);
+      if (specialData) {
+        this.cache.set(cacheKey, specialData);
+        return specialData;
+      }
+      
+      // Se não tem dados especiais, retorna null
+      this.cache.set(cacheKey, null);
       return null;
     }
   }
@@ -49,7 +72,7 @@ class PokemonLocationApiService {
     }
 
     try {
-      const response = await axios.get(locationUrl);
+      const response = await axios.get(locationUrl, { timeout: 8000 });
       const locationData: LocationArea = response.data;
       
       this.cache.set(cacheKey, locationData);
@@ -64,67 +87,100 @@ class PokemonLocationApiService {
     pokemonId: number, 
     encounters: PokemonEncounter[]
   ): Promise<ProcessedPokemonLocation> {
-    const pokemonResponse = await axios.get(`${API_BASE_URL}/pokemon/${pokemonId}`);
-    const pokemonName = pokemonResponse.data.name;
+    try {
+      const pokemonResponse = await axios.get(`${API_BASE_URL}/pokemon/${pokemonId}`, { timeout: 5000 });
+      const pokemonName = pokemonResponse.data.name;
 
-    const locations: ProcessedLocationData[] = [];
-    const availableVersions = new Set<string>();
+      const locations: ProcessedLocationData[] = [];
+      const availableVersions = new Set<string>();
 
-    for (const encounter of encounters) {
-      const locationName = encounter.location_area.name;
-      const displayName = this.getDisplayName(locationName);
+      for (const encounter of encounters) {
+        const locationName = encounter.location_area.name;
+        const displayName = this.getDisplayName(locationName);
+        
+        const processedEncounters: ProcessedEncounter[] = [];
+
+        for (const versionDetail of encounter.version_details) {
+          const version = versionDetail.version.name;
+          
+          // Aceitar mais versões para ter mais dados
+          if (!['firered', 'leafgreen', 'red', 'blue', 'yellow'].includes(version)) {
+            continue;
+          }
+
+          // Mapear versões antigas para as novas
+          const mappedVersion = this.mapVersion(version);
+          availableVersions.add(mappedVersion);
+
+          for (const encounterDetail of versionDetail.encounter_details) {
+            const processedEncounter: ProcessedEncounter = {
+              version: mappedVersion,
+              method: this.getMethodName(encounterDetail.method.name),
+              minLevel: encounterDetail.min_level,
+              maxLevel: encounterDetail.max_level,
+              chance: encounterDetail.chance,
+              conditions: encounterDetail.condition_values
+                .map(cv => this.getConditionName(cv.name))
+                .filter(name => name !== ''), // Filtrar condições vazias
+              rarity: this.calculateRarity(encounterDetail.chance)
+            };
+
+            processedEncounters.push(processedEncounter);
+          }
+        }
+
+        if (processedEncounters.length > 0) {
+          const existingLocation = locations.find(loc => loc.locationName === locationName);
+          
+          if (existingLocation) {
+            existingLocation.encounters.push(...processedEncounters);
+          } else {
+            locations.push({
+              locationName,
+              displayName,
+              encounters: processedEncounters
+            });
+          }
+        }
+      }
+
+      // Se não encontrou nenhuma localização, usar dados especiais se existirem
+      if (locations.length === 0) {
+        const specialData = this.getSpecialLocationInfo(pokemonId);
+        if (specialData) {
+          return specialData;
+        }
+      }
+
+      return {
+        pokemonId,
+        pokemonName,
+        locations: locations.sort((a, b) => a.displayName.localeCompare(b.displayName)),
+        availableVersions: Array.from(availableVersions).sort()
+      };
+    } catch (error) {
+      console.error('Erro ao processar dados de encontro:', error);
       
-      const processedEncounters: ProcessedEncounter[] = [];
-
-      for (const versionDetail of encounter.version_details) {
-        const version = versionDetail.version.name;
-        
-        // Filtrar apenas FireRed e LeafGreen
-        if (!['firered', 'leafgreen'].includes(version)) {
-          continue;
-        }
-
-        availableVersions.add(version);
-
-        for (const encounterDetail of versionDetail.encounter_details) {
-          const processedEncounter: ProcessedEncounter = {
-            version,
-            method: this.getMethodName(encounterDetail.method.name),
-            minLevel: encounterDetail.min_level,
-            maxLevel: encounterDetail.max_level,
-            chance: encounterDetail.chance,
-            conditions: encounterDetail.condition_values
-              .map(cv => this.getConditionName(cv.name))
-              .filter((name, idx) => name !== encounterDetail.condition_values[idx].name), // Filtrar condições não mapeadas
-            rarity: this.calculateRarity(encounterDetail.chance)
-          };
-
-          processedEncounters.push(processedEncounter);
-        }
+      // Fallback para dados especiais
+      const specialData = this.getSpecialLocationInfo(pokemonId);
+      if (specialData) {
+        return specialData;
       }
-
-      if (processedEncounters.length > 0) {
-        // Verificar se já existe uma localização com esse nome
-        const existingLocation = locations.find(loc => loc.locationName === locationName);
-        
-        if (existingLocation) {
-          existingLocation.encounters.push(...processedEncounters);
-        } else {
-          locations.push({
-            locationName,
-            displayName,
-            encounters: processedEncounters
-          });
-        }
-      }
+      
+      throw error;
     }
+  }
 
-    return {
-      pokemonId,
-      pokemonName,
-      locations: locations.sort((a, b) => a.displayName.localeCompare(b.displayName)),
-      availableVersions: Array.from(availableVersions).sort()
+  private mapVersion(version: string): string {
+    const versionMapping: Record<string, string> = {
+      'red': 'firered',
+      'blue': 'leafgreen', 
+      'yellow': 'firered',
+      'firered': 'firered',
+      'leafgreen': 'leafgreen'
     };
+    
+    return versionMapping[version] || version;
   }
 
   private getDisplayName(locationName: string): string {
@@ -176,17 +232,17 @@ class PokemonLocationApiService {
     }
   }
 
-  // Método para obter dados especiais (starters, evoluções, etc.)
+  // Dados especiais para Pokémon que não aparecem na API ou têm métodos especiais
   getSpecialLocationInfo(pokemonId: number): ProcessedPokemonLocation | null {
     const specialCases: Record<number, ProcessedPokemonLocation> = {
       // Starters
-      1: { // Bulbasaur
+      1: {
         pokemonId: 1,
         pokemonName: 'bulbasaur',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'starter',
-          displayName: 'Laboratório do Prof. Oak',
+          displayName: 'Laboratório do Prof. Oak - Pallet Town',
           encounters: [{
             version: 'both',
             method: 'Pokémon Inicial',
@@ -198,13 +254,13 @@ class PokemonLocationApiService {
           }]
         }]
       },
-      4: { // Charmander
+      4: {
         pokemonId: 4,
         pokemonName: 'charmander',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'starter',
-          displayName: 'Laboratório do Prof. Oak',
+          displayName: 'Laboratório do Prof. Oak - Pallet Town',
           encounters: [{
             version: 'both',
             method: 'Pokémon Inicial',
@@ -216,13 +272,13 @@ class PokemonLocationApiService {
           }]
         }]
       },
-      7: { // Squirtle
+      7: {
         pokemonId: 7,
         pokemonName: 'squirtle',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'starter',
-          displayName: 'Laboratório do Prof. Oak',
+          displayName: 'Laboratório do Prof. Oak - Pallet Town',
           encounters: [{
             version: 'both',
             method: 'Pokémon Inicial',
@@ -235,7 +291,7 @@ class PokemonLocationApiService {
         }]
       },
       // Pokémon de presente
-      106: { // Hitmonlee
+      106: {
         pokemonId: 106,
         pokemonName: 'hitmonlee',
         availableVersions: ['firered', 'leafgreen'],
@@ -253,7 +309,7 @@ class PokemonLocationApiService {
           }]
         }]
       },
-      107: { // Hitmonchan
+      107: {
         pokemonId: 107,
         pokemonName: 'hitmonchan',
         availableVersions: ['firered', 'leafgreen'],
@@ -271,13 +327,13 @@ class PokemonLocationApiService {
           }]
         }]
       },
-      131: { // Lapras
+      131: {
         pokemonId: 131,
         pokemonName: 'lapras',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'silph-co',
-          displayName: 'Silph Co.',
+          displayName: 'Silph Co. - Saffron City',
           encounters: [{
             version: 'both',
             method: 'Presente',
@@ -289,13 +345,13 @@ class PokemonLocationApiService {
           }]
         }]
       },
-      133: { // Eevee
+      133: {
         pokemonId: 133,
         pokemonName: 'eevee',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'celadon-city',
-          displayName: 'Celadon City',
+          displayName: 'Celadon City - Pokémon Mansion',
           encounters: [{
             version: 'both',
             method: 'Presente',
@@ -308,79 +364,79 @@ class PokemonLocationApiService {
         }]
       },
       // Lendários
-      144: { // Articuno
+      144: {
         pokemonId: 144,
         pokemonName: 'articuno',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'seafoam-islands',
-          displayName: 'Ilhas Seafoam',
+          displayName: 'Seafoam Islands',
           encounters: [{
             version: 'both',
-            method: 'Lendário',
+            method: 'Pokémon Lendário',
             minLevel: 50,
             maxLevel: 50,
             chance: 100,
-            conditions: ['Único encontro'],
+            conditions: ['Único encontro', 'Quebrar pedras para chegar'],
             rarity: 'extremely_rare'
           }]
         }]
       },
-      145: { // Zapdos
+      145: {
         pokemonId: 145,
         pokemonName: 'zapdos',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'power-plant',
-          displayName: 'Usina de Energia',
+          displayName: 'Power Plant',
           encounters: [{
             version: 'both',
-            method: 'Lendário',
+            method: 'Pokémon Lendário',
             minLevel: 50,
             maxLevel: 50,
             chance: 100,
-            conditions: ['Único encontro'],
+            conditions: ['Único encontro', 'Requer Surf'],
             rarity: 'extremely_rare'
           }]
         }]
       },
-      146: { // Moltres
+      146: {
         pokemonId: 146,
         pokemonName: 'moltres',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'mt-ember',
-          displayName: 'Monte Ember',
+          displayName: 'Mt. Ember - One Island',
           encounters: [{
             version: 'both',
-            method: 'Lendário',
+            method: 'Pokémon Lendário',
             minLevel: 50,
             maxLevel: 50,
             chance: 100,
-            conditions: ['Único encontro', 'Requer Ruby e Sapphire inseridos'],
+            conditions: ['Único encontro', 'Requer Ruby e Sapphire'],
             rarity: 'extremely_rare'
           }]
         }]
       },
-      150: { // Mewtwo
+      150: {
         pokemonId: 150,
         pokemonName: 'mewtwo',
         availableVersions: ['firered', 'leafgreen'],
         locations: [{
           locationName: 'cerulean-cave',
-          displayName: 'Caverna de Cerulean',
+          displayName: 'Cerulean Cave',
           encounters: [{
             version: 'both',
-            method: 'Lendário',
+            method: 'Pokémon Lendário',
             minLevel: 70,
             maxLevel: 70,
             chance: 100,
-            conditions: ['Único encontro', 'Após se tornar Campeão'],
+            conditions: ['Único encontro', 'Após se tornar Campeão da Liga'],
             rarity: 'extremely_rare'
           }]
         }]
       },
-      151: { // Mew
+      151: {
         pokemonId: 151,
         pokemonName: 'mew',
         availableVersions: ['firered', 'leafgreen'],
@@ -389,18 +445,26 @@ class PokemonLocationApiService {
           displayName: 'Evento Especial',
           encounters: [{
             version: 'both',
-            method: 'Evento',
+            method: 'Evento Nintendo',
             minLevel: 30,
             maxLevel: 30,
             chance: 100,
-            conditions: ['Apenas via evento Nintendo ou glitch'],
+            conditions: ['Apenas via evento oficial ou glitch'],
             rarity: 'extremely_rare'
           }]
         }]
-      }
+      },
+      // Evoluções que só são obtidas por evolução
+    //   2: null, // Ivysaur - evolução
+    //   3: null, // Venusaur - evolução
+    //   5: null, // Charmeleon - evolução
+    //   6: null, // Charizard - evolução
+    //   8: null, // Wartortle - evolução
+    //   9: null, // Blastoise - evolução
+      // Adicionar mais conforme necessário...
     };
 
-    return specialCases[pokemonId] || null;
+    return specialCases[pokemonId] !== undefined ? specialCases[pokemonId] : null;
   }
 
   clearCache(): void {

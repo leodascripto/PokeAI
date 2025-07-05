@@ -1,4 +1,4 @@
-
+// src/screens/PokemonDetailScreen.tsx - CORRIGIDO
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -41,7 +41,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
   route 
 }) => {
   const { pokemonId, pokemon: initialPokemon } = route.params;
-  const [activeTab, setActiveTab] = useState<'stats' | 'info' | 'detailed'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'info' | 'detailed' | 'location'>('stats');
   const insets = useSafeAreaInsets();
   
   const { colors, isDark } = useTheme();
@@ -110,7 +110,6 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
     if (!pokemon) return;
     
     navigation.navigate('Recommendations', { 
-      targetPokemon: pokemon,
       currentTeam: team 
     });
   }, [pokemon, team, navigation]);
@@ -225,7 +224,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
     </View>
   );
 
-  const actionButtonHeight = 80; // altura fixa para os botões de ação
+  const actionButtonHeight = 80;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -325,6 +324,21 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
               Detalhes
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.tab, 
+              activeTab === 'location' && [styles.activeTab, { borderBottomColor: colors.primary }]
+            ]}
+            onPress={() => setActiveTab('location')}
+          >
+            <Text style={[
+              styles.tabText, 
+              { color: activeTab === 'location' ? colors.primary : colors.textSecondary }
+            ]}>
+              Localização
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ScrollView com conteúdo das tabs */}
@@ -339,6 +353,7 @@ export const PokemonDetailScreen: React.FC<PokemonDetailScreenProps> = ({
           {activeTab === 'stats' && renderStats()}
           {activeTab === 'info' && renderInfo()}
           {activeTab === 'detailed' && <PokemonDetailedInfo pokemon={pokemon} />}
+          {activeTab === 'location' && <PokemonLocationInfo pokemon={pokemon} />}
         </ScrollView>
       </View>
 
@@ -450,7 +465,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   scrollContainer: {
