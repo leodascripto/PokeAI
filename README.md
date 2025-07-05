@@ -150,7 +150,7 @@ Escolha entre 8 estratégias diferentes, cada uma com sua própria "personalidad
   
 ### **📱 FAÇA O DOWNLOAD AGORA! 📱**
 
-<a href="https://expo.dev/artifacts/eas/o8iN5tbbfTRih1BjV2hW9t.apk">
+<a href="https://expo.dev/artifacts/eas/gsjXFWLj5qsZAN8QJaHuGF.apk">
   <img src="https://img.shields.io/badge/📲_BAIXAR_APK-DISPONÍVEL_AGORA-FF6B6B?style=for-the-badge&logo=android&logoColor=white" alt="Download PokéAI APK" />
 </a>
 
