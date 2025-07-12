@@ -15,6 +15,7 @@ interface PokemonListProps {
   showEmpty?: boolean;
   emptyMessage?: string;
   refreshControl?: React.ReactElement<any>;
+  showImageControls: boolean;
 }
 
 export const PokemonList: React.FC<PokemonListProps> = ({

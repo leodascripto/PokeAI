@@ -65,7 +65,10 @@ export const EnhancedPokemonImage: React.FC<EnhancedPokemonImageProps> = ({
   };
 
   const getCurrentImageUrl = (): string => {
-    return pokemonApi.getBestSpriteUrl(pokemon, currentView);
+    // Map '3d' to 'high_quality' for compatibility with getBestSpriteUrl
+    const spritePreference: 'static' | 'animated' | 'high_quality' | undefined =
+      currentView === '3d' ? 'high_quality' : currentView;
+    return pokemonApi.getBestSpriteUrl(pokemon, spritePreference);
   };
 
   const renderStaticImage = () => (

@@ -64,7 +64,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     reloadPokemon,
     getAssetQualityStats 
   } = usePokemon({ 
-    include3D: true,
     enableProgressTracking: true 
   });
   
@@ -322,7 +321,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         refreshControl={customRefreshControl}
         // Passar configurações de display para os cards
-        preferredImageMode={getPreferredImageMode()}
         showImageControls={displaySettings.showImageControls}
       />
       
