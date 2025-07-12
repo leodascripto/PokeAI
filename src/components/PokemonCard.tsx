@@ -1,16 +1,20 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+// src/components/PokemonCard.tsx - VERSÃO SIMPLIFICADA SEM CORS
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Pokemon } from '../types/pokemon';
 import { useTheme } from '../context/ThemeContext';
 import { getTypeColor, getTypeGradient } from '../utils/typeColors';
+import { EnhancedPokemonImage } from './EnhancedPokemonImage';
 
 interface PokemonCardProps {
   pokemon: Pokemon;
   onPress: () => void;
   onQuickAdd?: (pokemon: Pokemon) => void;
   isInTeam?: boolean;
+  showImageControls?: boolean;
+  preferredImageMode?: 'static' | 'animated' | '3d';
 }
 
 const { width } = Dimensions.get('window');
@@ -20,17 +24,80 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
   pokemon, 
   onPress, 
   onQuickAdd,
-  isInTeam = false 
+  isInTeam = false,
+  showImageControls = false,
+  preferredImageMode = 'static'
 }) => {
   const { colors, isDark } = useTheme();
+  const [currentImageMode, setCurrentImageMode] = useState<'static' | 'animated' | '3d'>(preferredImageMode);
   const primaryType = pokemon.types[0].type.name;
-  const gradient = getTypeGradient(primaryType);
+  const gradient = getTypeGradient(primaryType) as [string, string];
 
   const handleQuickAdd = (e: any) => {
     e.stopPropagation();
     if (onQuickAdd) {
       onQuickAdd(pokemon);
     }
+  };
+
+  const handleImageModeChange = (mode: 'static' | 'animated' | '3d') => {
+    setCurrentImageMode(mode);
+  };
+
+  const renderQualityIndicator = () => {
+    if (!pokemon.assets) return null;
+
+    const qualityIcons = {
+      high: 'diamond',
+      medium: 'star',
+      low: 'image'
+    };
+
+    const qualityColors = {
+      high: colors.success,
+      medium: colors.warning,
+      low: colors.textSecondary
+    };
+
+    return (
+      <View style={[styles.qualityIndicator, { backgroundColor: qualityColors[pokemon.assets.quality] }]}>
+        <Ionicons 
+          name={qualityIcons[pokemon.assets.quality] as any} 
+          size={10} 
+          color="#FFFFFF" 
+        />
+      </View>
+    );
+  };
+
+  const renderAssetsBadges = () => {
+    if (!pokemon.assets) return null;
+
+    const badges = [];
+    
+    if (pokemon.assets.hasAnimated) {
+      badges.push(
+        <View key="animated" style={[styles.assetBadge, { backgroundColor: colors.warning }]}>
+          <Ionicons name="play" size={8} color="#FFFFFF" />
+        </View>
+      );
+    }
+
+    if (pokemon.assets.quality === 'high') {
+      badges.push(
+        <View key="hd" style={[styles.assetBadge, { backgroundColor: colors.success }]}>
+          <Text style={styles.assetBadgeText}>HD</Text>
+        </View>
+      );
+    }
+
+    if (badges.length === 0) return null;
+
+    return (
+      <View style={styles.assetBadgesContainer}>
+        {badges}
+      </View>
+    );
   };
 
   return (
@@ -49,26 +116,30 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
         
         <View style={styles.header}>
           <Text style={styles.id}>#{pokemon.id.toString().padStart(3, '0')}</Text>
-          {onQuickAdd && !isInTeam && (
-            <TouchableOpacity 
-              style={styles.quickAddButton}
-              onPress={handleQuickAdd}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="add-circle" size={20} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerActions}>
+            {renderQualityIndicator()}
+            {onQuickAdd && !isInTeam && (
+              <TouchableOpacity 
+                style={styles.quickAddButton}
+                onPress={handleQuickAdd}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="add-circle" size={20} color="rgba(255,255,255,0.9)" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         
         <View style={styles.imageContainer}>
-          <Image
-            source={{ 
-              uri: pokemon.sprites.other['official-artwork'].front_default || 
-                   pokemon.sprites.front_default 
-            }}
-            style={styles.image}
-            resizeMode="contain"
+          <EnhancedPokemonImage
+            pokemon={pokemon}
+            width={80}
+            height={80}
+            showControls={showImageControls}
+            defaultView={currentImageMode}
+            onViewChange={handleImageModeChange}
           />
+          {renderAssetsBadges()}
         </View>
         
         <View style={styles.info}>
@@ -106,6 +177,15 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
               <Text style={styles.statValue}>{pokemon.stats[2].base_stat}</Text>
             </View>
           </View>
+
+          {/* Indicador simples de qualidade */}
+          {pokemon.assets && (
+            <View style={styles.assetsInfo}>
+              <Text style={styles.assetsInfoText}>
+                {pokemon.assets.hasAnimated ? '🎬' : '📷'} {pokemon.assets.quality.toUpperCase()}
+              </Text>
+            </View>
+          )}
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -129,7 +209,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
     position: 'relative',
-    minHeight: 200,
+    minHeight: 220,
   },
   teamBadge: {
     position: 'absolute',
@@ -149,12 +229,18 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
+    zIndex: 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   id: {
     color: 'rgba(255, 255, 255, 0.8)',
@@ -164,13 +250,44 @@ const styles = StyleSheet.create({
   quickAddButton: {
     padding: 2,
   },
+  qualityIndicator: {
+    borderRadius: 8,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   imageContainer: {
     alignItems: 'center',
     marginVertical: 8,
+    position: 'relative',
   },
-  image: {
-    width: 80,
-    height: 80,
+  assetBadgesContainer: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    flexDirection: 'row',
+    gap: 2,
+  },
+  assetBadge: {
+    borderRadius: 6,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  assetBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 6,
+    fontWeight: 'bold',
   },
   info: {
     alignItems: 'center',
@@ -205,6 +322,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     marginTop: 4,
+    marginBottom: 8,
   },
   statItem: {
     alignItems: 'center',
@@ -220,5 +338,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginTop: 2,
+  },
+  assetsInfo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  assetsInfoText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 8,
+    fontWeight: '500',
   },
 });
