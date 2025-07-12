@@ -1,4 +1,4 @@
-// src/services/pokemon3DService.ts - VERSÃO CORRIGIDA PARA DISPOSITIVOS FÍSICOS
+// src/services/pokemon3DService.ts - VERSÃO CORRIGIDA COM API POKEMON 3D
 import axios from 'axios';
 import { Platform } from 'react-native';
 
@@ -9,14 +9,17 @@ export interface Pokemon3DAssets {
   backAnimated?: string;
   shinyAnimated?: string;
   hasVariants?: boolean;
+  modelFormat?: 'glb' | 'gltf' | 'obj';
+  quality?: 'high' | 'medium' | 'low';
 }
 
 interface ConnectivityTest {
+  pokemon3DAPI: boolean;
   githubRaw: boolean;
   pokemonDB: boolean;
-  pokemonApiCDN: boolean;
   isEmulator: boolean;
   networkQuality: 'good' | 'poor' | 'offline';
+  supports3D: boolean;
 }
 
 class Pokemon3DService {
@@ -25,29 +28,25 @@ class Pokemon3DService {
   private lastConnectivityCheck: number = 0;
   private readonly CONNECTIVITY_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos
 
-  // URLs otimizadas para diferentes ambientes
+  // URLs da API Pokemon 3D - FONTE PRINCIPAL
+  private readonly POKEMON_3D_API = {
+    baseUrl: 'https://raw.githubusercontent.com/Sudhanshu-Ambastha/Pokemon-3D/main',
+    models: {
+      regular: 'https://raw.githubusercontent.com/Sudhanshu-Ambastha/Pokemon-3D/main/models/glb/regular',
+      shiny: 'https://raw.githubusercontent.com/Sudhanshu-Ambastha/Pokemon-3D/main/models/glb/shiny'
+    },
+    formats: ['glb', 'gltf', 'obj']
+  };
+
+  // URLs de fallback para sprites
   private readonly SPRITE_SOURCES = {
-    // Sempre funciona - GitHub Raw (CDN confiável)
     githubRaw: {
       officialArt: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork',
       homeSprites: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home',
       frontDefault: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon',
-      dreamWorld: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world'
+      animated: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown'
     },
-    
-    // CDN da PokeAPI (mais confiável)
-    pokeApiCDN: {
-      sprites: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon',
-      officialArt: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork'
-    },
-    
-    // Backup URLs (podem ter problemas de CORS em dispositivos)
-    pokemonDB: 'https://img.pokemondb.net/sprites/black-white/anim/normal',
-    
-    // URLs locais para fallback (se necessário)
-    fallback: {
-      base: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
-    }
+    pokemonDB: 'https://img.pokemondb.net/sprites/black-white/anim/normal'
   };
 
   private readonly POKEMON_NAME_MAP: Record<number, string> = {
@@ -84,7 +83,19 @@ class Pokemon3DService {
     151: 'mew'
   };
 
-  // Método principal com detecção automática de ambiente
+  // Lista de Pokémon com modelos 3D confirmados
+  private readonly POKEMON_WITH_3D_MODELS: Set<number> = new Set([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+    61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+    81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+    101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120,
+    121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
+    141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151
+  ]);
+
+  // Método principal para obter assets 3D
   async getPokemonAssets(pokemonId: number, pokemonName: string): Promise<Pokemon3DAssets> {
     const cacheKey = `assets_${pokemonId}`;
     
@@ -93,7 +104,6 @@ class Pokemon3DService {
     }
 
     try {
-      // Verificar conectividade se necessário
       await this.ensureConnectivityStatus();
       
       const normalizedName = this.POKEMON_NAME_MAP[pokemonId] || pokemonName.toLowerCase();
@@ -103,11 +113,11 @@ class Pokemon3DService {
       return assets;
     } catch (error) {
       console.error(`Erro ao buscar assets para ${pokemonName}:`, error);
-      return this.getFallbackAssets(pokemonId);
+      return this.getFallbackAssets(pokemonId, pokemonName);
     }
   }
 
-  // Verifica conectividade e qualidade da rede
+  // Verifica conectividade e capacidades do dispositivo
   private async ensureConnectivityStatus(): Promise<void> {
     const now = Date.now();
     
@@ -115,79 +125,114 @@ class Pokemon3DService {
       return;
     }
 
-    console.log('🔍 Testando conectividade...');
+    console.log('🔍 Testando conectividade 3D...');
     
     try {
       const results = await Promise.allSettled([
+        this.testUrl(`${this.POKEMON_3D_API.models.regular}/25.glb`, 5000), // Pikachu
         this.testUrl(`${this.SPRITE_SOURCES.githubRaw.officialArt}/1.png`, 3000),
-        this.testUrl(`${this.SPRITE_SOURCES.pokeApiCDN.sprites}/1.png`, 3000),
         this.testUrl(`${this.SPRITE_SOURCES.pokemonDB}/bulbasaur.gif`, 2000)
       ]);
 
+      const supports3D = this.check3DSupport();
+
       this.connectivityStatus = {
-        githubRaw: results[0].status === 'fulfilled',
-        pokemonApiCDN: results[1].status === 'fulfilled', 
+        pokemon3DAPI: results[0].status === 'fulfilled',
+        githubRaw: results[1].status === 'fulfilled',
         pokemonDB: results[2].status === 'fulfilled',
         isEmulator: this.detectEmulator(),
-        networkQuality: this.assessNetworkQuality(results)
+        networkQuality: this.assessNetworkQuality(results),
+        supports3D
       };
 
       this.lastConnectivityCheck = now;
 
-      console.log('📊 Status de conectividade:', {
+      console.log('📊 Status de conectividade 3D:', {
         environment: this.connectivityStatus.isEmulator ? 'Emulador' : 'Dispositivo físico',
+        supports3D: this.connectivityStatus.supports3D ? '✅' : '❌',
+        pokemon3DAPI: this.connectivityStatus.pokemon3DAPI ? '✅' : '❌',
         github: this.connectivityStatus.githubRaw ? '✅' : '❌',
-        pokemonApiCDN: this.connectivityStatus.pokemonApiCDN ? '✅' : '❌', 
         pokemonDB: this.connectivityStatus.pokemonDB ? '✅' : '❌',
         networkQuality: this.connectivityStatus.networkQuality
       });
 
     } catch (error) {
-      console.error('❌ Erro no teste de conectividade:', error);
+      console.error('❌ Erro no teste de conectividade 3D:', error);
       this.connectivityStatus = {
+        pokemon3DAPI: false,
         githubRaw: false,
-        pokemonApiCDN: false,
         pokemonDB: false,
         isEmulator: this.detectEmulator(),
-        networkQuality: 'poor'
+        networkQuality: 'poor',
+        supports3D: false
       };
     }
   }
 
-  // Constroi assets baseado na conectividade disponível
+  // Verifica suporte real a 3D
+  private check3DSupport(): boolean {
+    // 3D só funciona em dispositivos físicos
+    const isEmulator = this.detectEmulator();
+    const isPhysicalDevice = !isEmulator && Platform.OS !== 'web';
+    
+    // Em desenvolvimento, só permitir 3D em dispositivos físicos
+    if (__DEV__) {
+      return isPhysicalDevice;
+    }
+    
+    // Em produção, permitir em todos os dispositivos não-emulados
+    return isPhysicalDevice;
+  }
+
+  // Constroi assets baseado na disponibilidade
   private async buildOptimalAssets(pokemonId: number, normalizedName: string): Promise<Pokemon3DAssets> {
     const connectivity = this.connectivityStatus!;
+    const has3DModel = this.POKEMON_WITH_3D_MODELS.has(pokemonId);
     
-    // Escolher fontes baseado na disponibilidade
-    let primarySource: string;
-    let animatedSource: string | undefined;
-    let hasVariants = false;
+    let assets: Pokemon3DAssets = {
+      hasVariants: false,
+      quality: 'low'
+    };
 
-    if (connectivity.githubRaw) {
-      // GitHub Raw é a fonte mais confiável
-      primarySource = `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`;
+    // Verificar modelo 3D se suportado
+    if (connectivity.supports3D && connectivity.pokemon3DAPI && has3DModel) {
+      const model3DUrl = `${this.POKEMON_3D_API.models.regular}/${pokemonId}.glb`;
       
-      if (connectivity.networkQuality === 'good') {
-        // Tentar sprite animado apenas com boa conexão
-        if (connectivity.pokemonDB && pokemonId <= 151) {
-          animatedSource = `${this.SPRITE_SOURCES.pokemonDB}/${normalizedName}.gif`;
-          hasVariants = true;
+      try {
+        const modelExists = await this.testUrl(model3DUrl, 3000);
+        if (modelExists) {
+          assets.model3D = model3DUrl;
+          assets.modelFormat = 'glb';
+          assets.quality = 'high';
+          assets.hasVariants = true;
+          
+          // Verificar variante shiny
+          const shinyUrl = `${this.POKEMON_3D_API.models.shiny}/${pokemonId}.glb`;
+          const shinyExists = await this.testUrl(shinyUrl, 2000);
+          if (shinyExists) {
+            assets.shinyAnimated = shinyUrl;
+          }
         }
+      } catch (error) {
+        console.warn(`Modelo 3D não disponível para ${pokemonId}:`, error);
       }
-    } else if (connectivity.pokemonApiCDN) {
-      // Fallback para CDN da PokeAPI
-      primarySource = `${this.SPRITE_SOURCES.pokeApiCDN.officialArt}/${pokemonId}.png`;
-    } else {
-      // Último recurso - URL básica que deve sempre funcionar
-      primarySource = `${this.SPRITE_SOURCES.fallback.base}/${pokemonId}.png`;
     }
 
-    const assets: Pokemon3DAssets = {
-      frontAnimated: primarySource,
-      animatedSprite: animatedSource,
-      model3D: undefined, // Desabilitar 3D por ora
-      hasVariants
-    };
+    // Assets de fallback sempre disponíveis
+    if (connectivity.githubRaw) {
+      assets.frontAnimated = `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`;
+      
+      if (connectivity.networkQuality === 'good') {
+        if (connectivity.pokemonDB && pokemonId <= 151) {
+          assets.animatedSprite = `${this.SPRITE_SOURCES.pokemonDB}/${normalizedName}.gif`;
+          assets.hasVariants = true;
+        }
+      }
+      
+      if (assets.quality === 'low') {
+        assets.quality = 'medium';
+      }
+    }
 
     return assets;
   }
@@ -197,9 +242,8 @@ class Pokemon3DService {
     try {
       const response = await axios.head(url, { 
         timeout,
-        // Headers para evitar problemas de CORS
         headers: {
-          'Accept': 'image/*',
+          'Accept': '*/*',
           'Cache-Control': 'no-cache'
         }
       });
@@ -211,21 +255,18 @@ class Pokemon3DService {
 
   // Detecta se está rodando em emulador
   private detectEmulator(): boolean {
-    // No React Native, podemos usar alguns indicadores
     if (Platform.OS === 'android') {
-      // Android emulators geralmente têm características específicas
       return Platform.Version === 10000;
     }
     
     if (Platform.OS === 'ios') {
-      // iOS simulators
       return Platform.isPad === undefined;
     }
 
     return false;
   }
 
-  // Avalia qualidade da rede baseado nos testes
+  // Avalia qualidade da rede
   private assessNetworkQuality(results: PromiseSettledResult<boolean>[]): 'good' | 'poor' | 'offline' {
     const successCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
     
@@ -235,10 +276,14 @@ class Pokemon3DService {
   }
 
   // Assets de fallback garantidos
-  private getFallbackAssets(pokemonId: number): Pokemon3DAssets {
+  private getFallbackAssets(pokemonId: number, pokemonName: string): Pokemon3DAssets {
+    const normalizedName = this.POKEMON_NAME_MAP[pokemonId] || pokemonName.toLowerCase();
+    
     return {
-      frontAnimated: `${this.SPRITE_SOURCES.fallback.base}/${pokemonId}.png`,
-      hasVariants: false
+      frontAnimated: `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`,
+      animatedSprite: pokemonId <= 151 ? `${this.SPRITE_SOURCES.pokemonDB}/${normalizedName}.gif` : undefined,
+      hasVariants: pokemonId <= 151,
+      quality: 'low'
     };
   }
 
@@ -246,7 +291,6 @@ class Pokemon3DService {
   getBestSpriteUrl(pokemonId: number, pokemonName: string, preference: 'animated' | 'high_quality' | 'static' = 'high_quality'): string {
     const normalizedName = this.POKEMON_NAME_MAP[pokemonId] || pokemonName.toLowerCase();
     
-    // Se não temos status de conectividade, usar fonte mais confiável
     if (!this.connectivityStatus) {
       return `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`;
     }
@@ -255,11 +299,9 @@ class Pokemon3DService {
 
     switch (preference) {
       case 'animated':
-        // Só tentar animado se a conectividade for boa e for Gen 1
         if (connectivity.pokemonDB && connectivity.networkQuality === 'good' && pokemonId <= 151) {
           return `${this.SPRITE_SOURCES.pokemonDB}/${normalizedName}.gif`;
         }
-        // Fallback para high quality
         return this.getBestSpriteUrl(pokemonId, pokemonName, 'high_quality');
       
       case 'high_quality':
@@ -272,63 +314,94 @@ class Pokemon3DService {
       default:
         if (connectivity.githubRaw) {
           return `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`;
-        } else if (connectivity.pokemonApiCDN) {
-          return `${this.SPRITE_SOURCES.pokeApiCDN.officialArt}/${pokemonId}.png`;
         } else {
-          return `${this.SPRITE_SOURCES.fallback.base}/${pokemonId}.png`;
+          return `${this.SPRITE_SOURCES.githubRaw.frontDefault}/${pokemonId}.png`;
         }
     }
   }
 
-  // Verificar disponibilidade inteligente
+  // Obter URL do modelo 3D
+  get3DModelUrl(pokemonId: number, variant: 'regular' | 'shiny' = 'regular'): string | null {
+    if (!this.connectivityStatus?.supports3D || !this.POKEMON_WITH_3D_MODELS.has(pokemonId)) {
+      return null;
+    }
+
+    const baseUrl = variant === 'shiny' ? 
+      this.POKEMON_3D_API.models.shiny : 
+      this.POKEMON_3D_API.models.regular;
+    
+    return `${baseUrl}/${pokemonId}.glb`;
+  }
+
+  // Verificar disponibilidade de assets
   async checkAssetAvailability(pokemonId: number, pokemonName: string): Promise<{
     has3D: boolean;
     hasAnimated: boolean;
     hasStatic: boolean;
-    recommendedMode: 'animated' | 'static';
+    recommendedMode: 'animated' | 'static' | '3d';
+    supports3D: boolean;
   }> {
     await this.ensureConnectivityStatus();
     
     const connectivity = this.connectivityStatus!;
+    const has3DModel = this.POKEMON_WITH_3D_MODELS.has(pokemonId);
     const isGen1 = pokemonId >= 1 && pokemonId <= 151;
     
     // Recomendação baseada no ambiente
-    let recommendedMode: 'animated' | 'static' = 'static';
+    let recommendedMode: 'animated' | 'static' | '3d' = 'static';
     
-    if (connectivity.isEmulator && connectivity.networkQuality === 'good') {
-      // No emulador com boa conexão, preferir animado
-      recommendedMode = isGen1 ? 'animated' : 'static';
-    } else if (!connectivity.isEmulator) {
-      // Em dispositivo físico, ser mais conservador
-      recommendedMode = connectivity.networkQuality === 'good' && isGen1 ? 'animated' : 'static';
+    if (connectivity.supports3D && has3DModel) {
+      recommendedMode = '3d';
+    } else if (connectivity.networkQuality === 'good' && isGen1) {
+      recommendedMode = 'animated';
     }
 
     return {
-      has3D: false, // Desabilitado por ora
+      has3D: connectivity.supports3D && connectivity.pokemon3DAPI && has3DModel,
       hasAnimated: connectivity.pokemonDB && isGen1 && connectivity.networkQuality !== 'poor',
-      hasStatic: connectivity.githubRaw || connectivity.pokemonApiCDN,
-      recommendedMode
+      hasStatic: connectivity.githubRaw,
+      recommendedMode,
+      supports3D: connectivity.supports3D
     };
   }
 
-  // URLs garantidas para fallback
-  getGuaranteedSpriteUrls(pokemonId: number) {
-    return {
-      // Sempre funcionam - GitHub Raw tem CDN global
-      officialArt: `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`,
-      frontDefault: `${this.SPRITE_SOURCES.githubRaw.frontDefault}/${pokemonId}.png`,
-      homeSprite: `${this.SPRITE_SOURCES.githubRaw.homeSprites}/${pokemonId}.png`,
-      dreamWorld: `${this.SPRITE_SOURCES.githubRaw.dreamWorld}/${pokemonId}.svg`,
-      
-      // Pode não funcionar em todos os dispositivos
-      animated: this.connectivityStatus?.pokemonDB && pokemonId <= 151 ? 
-        `${this.SPRITE_SOURCES.pokemonDB}/${this.POKEMON_NAME_MAP[pokemonId] || 'pokemon'}.gif` : null
-    };
+  // Pré-carregar modelos essenciais
+  async preloadEssentialModels(pokemonIds: number[]): Promise<void> {
+    console.log('🎮 Pré-carregando modelos 3D essenciais...');
+    
+    const essentialIds = pokemonIds.slice(0, 5);
+    const preloadPromises = essentialIds.map(async (id) => {
+      try {
+        const modelUrl = this.get3DModelUrl(id);
+        if (modelUrl) {
+          await this.testUrl(modelUrl, 3000);
+          console.log(`✅ Modelo 3D ${id} pré-carregado`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Erro ao pré-carregar modelo 3D ${id}:`, error);
+      }
+    });
+
+    await Promise.allSettled(preloadPromises);
+    console.log('🎮 Pré-carregamento de modelos 3D concluído');
   }
 
   // Status da conectividade para debug
   getConnectivityStatus(): ConnectivityTest | null {
     return this.connectivityStatus;
+  }
+
+  // URLs garantidas para fallback
+  getGuaranteedSpriteUrls(pokemonId: number) {
+    const normalizedName = this.POKEMON_NAME_MAP[pokemonId] || 'pokemon';
+    
+    return {
+      officialArt: `${this.SPRITE_SOURCES.githubRaw.officialArt}/${pokemonId}.png`,
+      frontDefault: `${this.SPRITE_SOURCES.githubRaw.frontDefault}/${pokemonId}.png`,
+      homeSprite: `${this.SPRITE_SOURCES.githubRaw.homeSprites}/${pokemonId}.png`,
+      animated: pokemonId <= 151 ? `${this.SPRITE_SOURCES.pokemonDB}/${normalizedName}.gif` : null,
+      model3D: this.get3DModelUrl(pokemonId)
+    };
   }
 
   // Limpar cache e reconectar
@@ -340,11 +413,16 @@ class Pokemon3DService {
 
   clearCache(): void {
     this.cache.clear();
-    console.log('🧹 Cache limpo');
+    console.log('🧹 Cache de assets 3D limpo');
   }
 
   getCacheSize(): number {
     return this.cache.size;
+  }
+
+  // Lista de Pokémon com modelos 3D disponíveis
+  getPokemonWith3DModels(): number[] {
+    return Array.from(this.POKEMON_WITH_3D_MODELS);
   }
 }
 
