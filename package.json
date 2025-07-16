@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "clean": "expo start --clear"
+    "clean": "expo start --clear",
+    "postinstall": "bun install --force"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -16,8 +17,6 @@
     "@react-navigation/bottom-tabs": "^7.4.2",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/stack": "^7.4.2",
-    "@react-three/drei": "^10.5.0",
-    "@react-three/fiber": "^9.2.0",
     "axios": "^1.10.0",
     "expo": "~53.0.17",
     "expo-asset": "~11.1.7",
@@ -26,7 +25,7 @@
     "expo-gl-cpp": "^11.4.0",
     "expo-linear-gradient": "^14.1.5",
     "expo-status-bar": "~2.2.3",
-    "expo-three": "^8.0.0",
+    "expo-three": "^7.0.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
@@ -37,16 +36,23 @@
     "react-native-svg": "15.11.2",
     "react-native-web": "^0.20.0",
     "react-native-webview": "^13.15.0",
-    "three": "^0.178.0"
+    "three": "^0.166.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/bun": "^1.2.18",
     "@types/react": "~19.0.10",
     "@types/react-native": "^0.72.8",
+    "@types/three": "^0.166.0",
     "eas-cli": "^16.13.3",
     "expo-module-scripts": "^4.1.9",
     "typescript": "~5.8.3"
+  },
+  "resolutions": {
+    "three": "^0.166.1"
+  },
+  "overrides": {
+    "three": "^0.166.1"
   },
   "private": true
 }

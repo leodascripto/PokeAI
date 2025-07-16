@@ -1,8 +1,9 @@
 // src/components/Pokemon3DViewer.tsx
 import React, { Suspense, useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform, Alert } from 'react-native';
-import { Canvas } from '@react-three/fiber/native';
-import { useGLTF, OrbitControls } from '@react-three/drei/native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, Alert, Image } from 'react-native';
+import { GLView } from 'expo-gl';
+import { Renderer } from 'expo-three';
+import * as THREE from 'three';
 import { useTheme } from '../context/ThemeContext';
 import { Pokemon } from '../types/pokemon';
 
@@ -15,53 +16,116 @@ interface Pokemon3DViewerProps {
   style?: any;
 }
 
-// Componente interno para carregar modelo 3D
-function PokemonModel({ 
-  pokemonId, 
+// Componente alternativo usando GLView do Expo
+function NativePokemon3D({ 
+  pokemon, 
   onLoad, 
   onError 
 }: { 
-  pokemonId: number; 
+  pokemon: Pokemon; 
   onLoad: () => void; 
   onError: (error: any) => void; 
 }) {
-  try {
-    const gltf = useGLTF(
-      `https://raw.githubusercontent.com/Sudhanshu-Ambastha/Pokemon-3D/main/models/glb/regular/${pokemonId}.glb`
-    );
-    
-    useEffect(() => {
-      if (gltf && gltf.scene) {
-        // Otimizações para dispositivos móveis
-        gltf.scene.traverse((child: any) => {
-          if (child.isMesh) {
-            child.castShadow = false;
-            child.receiveShadow = false;
-            if (child.material) {
-              child.material.precision = 'mediump';
-            }
-          }
-        });
-        onLoad();
-      }
-    }, [gltf, onLoad]);
-    
-    if (!gltf || !gltf.scene) {
-      throw new Error('Modelo não carregado');
+  const [gl, setGL] = useState<any>(null);
+  const [renderer, setRenderer] = useState<any>(null);
+  const sceneRef = useRef<THREE.Scene>();
+  const cameraRef = useRef<THREE.PerspectiveCamera>();
+  const cubeRef = useRef<THREE.Mesh>();
+
+  const onContextCreate = async (gl: any) => {
+    try {
+      setGL(gl);
+      
+      // Configurar renderer
+      const renderer = new Renderer({ gl });
+      renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
+      setRenderer(renderer);
+
+      // Criar cena
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf0f0f0);
+      sceneRef.current = scene;
+
+      // Criar câmera
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        gl.drawingBufferWidth / gl.drawingBufferHeight,
+        0.1,
+        1000
+      );
+      camera.position.z = 5;
+      cameraRef.current = camera;
+
+      // Criar geometria simples (cubo como placeholder)
+      const geometry = new THREE.BoxGeometry(2, 2, 2);
+      const material = new THREE.MeshPhongMaterial({ 
+        color: getPokemonColor(pokemon.types[0].type.name),
+        shininess: 100
+      });
+      const cube = new THREE.Mesh(geometry, material);
+      cubeRef.current = cube;
+      scene.add(cube);
+
+      // Adicionar luzes
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(1, 1, 1);
+      scene.add(directionalLight);
+
+      onLoad();
+
+      // Loop de animação
+      const animate = () => {
+        requestAnimationFrame(animate);
+        
+        if (cubeRef.current) {
+          cubeRef.current.rotation.x += 0.01;
+          cubeRef.current.rotation.y += 0.01;
+        }
+
+        renderer.render(scene, camera);
+        gl.endFrameEXP();
+      };
+      
+      animate();
+    } catch (error) {
+      console.error('Erro ao configurar 3D:', error);
+      onError(error);
     }
-    
-    return (
-      <primitive 
-        object={gltf.scene} 
-        scale={1.5} 
-        position={[0, -1, 0]}
-        rotation={[0, 0, 0]}
-      />
-    );
-  } catch (error) {
-    onError(error);
-    return null;
-  }
+  };
+
+  const getPokemonColor = (type: string): number => {
+    const typeColors: { [key: string]: number } = {
+      fire: 0xff6b6b,
+      water: 0x4dabf7,
+      grass: 0x51cf66,
+      electric: 0xffd43b,
+      psychic: 0xe64980,
+      ice: 0x74c0fc,
+      dragon: 0x845ef7,
+      dark: 0x495057,
+      fairy: 0xf783ac,
+      normal: 0xa8a8a8,
+      fighting: 0xc92a2a,
+      poison: 0x8a1ac1,
+      ground: 0xe67700,
+      flying: 0x7950f2,
+      bug: 0x92cc41,
+      rock: 0x868e96,
+      ghost: 0x705cb8,
+      steel: 0x868e96
+    };
+    return typeColors[type] || 0xa8a8a8;
+  };
+
+  return (
+    <GLView
+      style={styles.glView}
+      onContextCreate={onContextCreate}
+    />
+  );
 }
 
 // Componente de loading customizado
@@ -78,19 +142,19 @@ function LoadingFallback() {
   );
 }
 
-// Componente de erro
-function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+// Componente de erro com fallback para imagem
+function ErrorFallback({ pokemon, onRetry }: { pokemon: Pokemon; onRetry: () => void }) {
   const { colors } = useTheme();
   
   return (
     <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
-      <Text style={[styles.errorText, { color: colors.error }]}>
-        Erro ao carregar modelo 3D
-      </Text>
-      <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
-        {Platform.OS === 'ios' && __DEV__ ? 
-          'Modelos 3D requerem dispositivo físico' : 
-          'Verifique sua conexão'}
+      <Image 
+        source={{ uri: pokemon.sprites.front_default }}
+        style={styles.fallbackImage}
+        resizeMode="contain"
+      />
+      <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+        Modo 2D (dispositivo não compatível)
       </Text>
     </View>
   );
@@ -107,22 +171,27 @@ export const Pokemon3DViewer: React.FC<Pokemon3DViewerProps> = ({
   const { colors } = useTheme();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const controlsRef = useRef<any>();
+  const [isSupported, setIsSupported] = useState(true);
 
-  // Verificação de suporte para Three.js
+  // Verificação de suporte para OpenGL
   useEffect(() => {
-    if (Platform.OS !== 'web' && __DEV__) {
-      const isEmulator = Platform.OS === 'ios' ? 
-        Platform.isPad === undefined : 
-        Platform.Version === 10000;
-        
-      if (isEmulator) {
-        Alert.alert(
-          'Aviso de Desenvolvimento',
-          'Modelos 3D funcionam apenas em dispositivos físicos. Em emuladores, você verá apenas o fallback.',
-          [{ text: 'OK' }]
-        );
-      }
+    if (Platform.OS !== 'web') {
+      // Verificar se o dispositivo suporta OpenGL ES
+      const checkSupport = async () => {
+        try {
+          // Em desenvolvimento ou emulador, usar fallback
+          const versionNumber = typeof Platform.Version === 'string' ? parseInt(Platform.Version, 10) : Platform.Version;
+          if (__DEV__ || versionNumber < 21) {
+            setIsSupported(false);
+            return;
+          }
+          setIsSupported(true);
+        } catch {
+          setIsSupported(false);
+        }
+      };
+      
+      checkSupport();
     }
   }, []);
 
@@ -135,6 +204,7 @@ export const Pokemon3DViewer: React.FC<Pokemon3DViewerProps> = ({
     console.error('Erro ao carregar modelo 3D:', err);
     setError(err.message || 'Erro desconhecido');
     setLoaded(false);
+    setIsSupported(false);
   };
 
   const handleRetry = () => {
@@ -142,76 +212,46 @@ export const Pokemon3DViewer: React.FC<Pokemon3DViewerProps> = ({
     setLoaded(false);
   };
 
-  // Fallback para emuladores ou erro
-  if (error || (Platform.OS !== 'web' && __DEV__ && !loaded)) {
+  // Fallback para dispositivos não suportados
+  if (!isSupported || error) {
     return (
       <View style={[styles.container, { width, height }, style]}>
-        {error ? (
-          <ErrorFallback onRetry={handleRetry} />
-        ) : (
-          <LoadingFallback />
-        )}
+        <ErrorFallback pokemon={pokemon} onRetry={handleRetry} />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { width, height }, style]}>
-      <Canvas
-        style={styles.canvas}
-        dpr={Math.min(Platform.OS === 'web' ? window.devicePixelRatio : 2, 2)}
-        gl={{ 
-          antialias: false, // Desabilitar para performance
-          powerPreference: 'high-performance',
-          precision: 'mediump'
-        }}
-        camera={{ 
-          position: [0, 0, 5], 
-          fov: 50,
-          near: 0.1,
-          far: 1000
-        }}
-        frameloop="demand" // Renderizar apenas quando necessário
-      >
-        {/* Iluminação otimizada */}
-        <ambientLight intensity={0.6} />
-        <directionalLight 
-          position={[10, 10, 5]} 
-          intensity={0.8} 
-          castShadow={false}
-        />
-        
-        {/* Modelo 3D com Suspense */}
-        <Suspense fallback={null}>
-          <PokemonModel 
-            pokemonId={pokemon.id}
-            onLoad={handleLoad}
-            onError={handleError}
+      {Platform.OS === 'web' ? (
+        // Para web, usar imagem como fallback por enquanto
+        <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+          <Image 
+            source={{ uri: pokemon.sprites.front_default }}
+            style={styles.fallbackImage}
+            resizeMode="contain"
           />
-        </Suspense>
-        
-        {/* Controles de órbita */}
-        {enableControls && (
-          <OrbitControls
-            ref={controlsRef}
-            enableZoom={true}
-            enablePan={false}
-            enableRotate={true}
-            autoRotate={autoRotate}
-            autoRotateSpeed={1}
-            minDistance={2}
-            maxDistance={10}
-            minPolarAngle={Math.PI / 4}
-            maxPolarAngle={Math.PI - Math.PI / 4}
-          />
-        )}
-      </Canvas>
-      
-      {/* Overlay de loading */}
-      {!loaded && !error && (
-        <View style={styles.loadingOverlay}>
-          <LoadingFallback />
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+            Visualização 2D
+          </Text>
         </View>
+      ) : (
+        <>
+          <Suspense fallback={<LoadingFallback />}>
+            <NativePokemon3D 
+              pokemon={pokemon}
+              onLoad={handleLoad}
+              onError={handleError}
+            />
+          </Suspense>
+          
+          {/* Overlay de loading */}
+          {!loaded && !error && (
+            <View style={styles.loadingOverlay}>
+              <LoadingFallback />
+            </View>
+          )}
+        </>
       )}
       
       {/* Indicador de qualidade */}
@@ -224,19 +264,10 @@ export const Pokemon3DViewer: React.FC<Pokemon3DViewerProps> = ({
   );
 };
 
-// Pré-carregamento de modelos populares
+// Função para pré-carregamento (simplificada)
 export const preloadPopularPokemon = () => {
-  const popularIds = [25, 1, 4, 7, 150, 151]; // Pikachu, Bulbasaur, Charmander, Squirtle, Mewtwo, Mew
-  
-  popularIds.forEach(id => {
-    try {
-      useGLTF.preload(
-        `https://raw.githubusercontent.com/Sudhanshu-Ambastha/Pokemon-3D/main/models/glb/regular/${id}.glb`
-      );
-    } catch (error) {
-      console.warn(`Falha ao pré-carregar Pokémon ${id}:`, error);
-    }
-  });
+  console.log('Pré-carregamento de modelos 3D preparado');
+  // Por enquanto, apenas log - implementar quando os modelos estiverem funcionando
 };
 
 const styles = StyleSheet.create({
@@ -245,7 +276,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  canvas: {
+  glView: {
     flex: 1,
   },
   loadingContainer: {
@@ -277,15 +308,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  errorSubtext: {
     fontSize: 12,
     textAlign: 'center',
-    lineHeight: 16,
+    marginTop: 8,
+  },
+  fallbackImage: {
+    width: 80,
+    height: 80,
   },
   qualityBadge: {
     position: 'absolute',

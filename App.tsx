@@ -9,19 +9,36 @@ import { LogBox, Platform } from 'react-native';
 
 // CONFIGURAÇÃO CRÍTICA PARA THREE.JS EM REACT NATIVE
 import { THREE } from 'expo-three';
-global.THREE = global.THREE || THREE;
+
+// Configuração global do THREE.js
+if (!global.THREE) {
+  global.THREE = THREE;
+}
 
 // Configuração adicional para dispositivos físicos
 if (Platform.OS !== 'web') {
   // Polyfills necessários para Three.js
-  global.self = global.self || global;
-  global.window = global.window || global;
-  global.document = global.document || {};
+  if (!global.self) global.self = global;
+  if (!global.window) global.window = global;
+  if (!global.document) global.document = {};
   
   // Configuração de performance
-  if (global.performance === undefined) {
+  if (!global.performance) {
     global.performance = {
       now: () => Date.now()
+    };
+  }
+
+  // Configurações adicionais para React Three Fiber
+  if (!global.requestAnimationFrame) {
+    global.requestAnimationFrame = (callback: FrameRequestCallback) => {
+      return setTimeout(callback, 16);
+    };
+  }
+
+  if (!global.cancelAnimationFrame) {
+    global.cancelAnimationFrame = (id: number) => {
+      clearTimeout(id);
     };
   }
 }
@@ -37,6 +54,12 @@ LogBox.ignoreLogs([
   'THREE.WebGLRenderer: Context Lost',
   'THREE.WebGLProgram: gl.getProgramInfoLog()',
   'Non-serializable values were found in the navigation state',
+  // Warnings do React Three Fiber
+  'Warning: useLayoutEffect does nothing on the server',
+  'THREE.WebGLRenderer: Image in RGBA format',
+  // Warnings do Expo Three
+  'Expo.GLView',
+  'ExpoTHREE',
 ]);
 
 export default function App() {
